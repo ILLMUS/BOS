@@ -298,351 +298,2005 @@ export default function LandingPage() {
       ========================================================== */}
 
       <main>
-        <section className="relative px-4 pb-20 pt-20 sm:px-6 sm:pt-28 lg:px-8 lg:pt-32">
-          <div className="mx-auto max-w-6xl text-center">
-            <div className="mx-auto mb-7 inline-flex items-center gap-2 rounded-full border border-purple-400/20 bg-purple-500/[0.07] px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-purple-300">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-purple-400 opacity-60" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-purple-400" />
-              </span>
-              Business Operating System
-            </div>
+<section className="relative isolate overflow-hidden bg-[#020617]">
 
-            <h1 className="mx-auto max-w-5xl text-4xl font-extrabold leading-[1.05] tracking-[-0.04em] sm:text-6xl lg:text-7xl">
-              Run your entire business
-              <br />
-              <span className="bg-gradient-to-r from-white via-purple-200 to-blue-300 bg-clip-text text-transparent">
-                from one operating system.
-              </span>
-            </h1>
+  {/* =========================================================
+      DESKTOP HERO BACKGROUND
+      Hidden on mobile.
+      ========================================================= */}
 
-            <p className="mx-auto mt-7 max-w-2xl text-base leading-7 text-slate-400 sm:text-lg">
-              From the first campaign and customer enquiry to sales,
-              operations, SOP execution, invoicing, payment and retention —
-              BOS connects the workflow behind your business.
+  <div className="pointer-events-none absolute inset-0 hidden md:block">
+
+    <img
+      src="/hero-bos.png"
+      alt=""
+      aria-hidden="true"
+      className="
+        absolute
+        inset-0
+        h-full
+        w-full
+        object-cover
+        object-center
+      "
+    />
+
+    {/* Left-side darkening */}
+
+    <div
+      className="
+        absolute
+        inset-0
+        bg-gradient-to-r
+        from-[#020617]/65
+        via-[#020617]/25
+        to-transparent
+      "
+    />
+
+    {/* Top vignette */}
+
+    <div
+      className="
+        absolute
+        inset-x-0
+        top-0
+        h-32
+        bg-gradient-to-b
+        from-[#020617]/45
+        to-transparent
+      "
+    />
+    {/* Bottom vignette */}
+
+    <div
+      className="
+        absolute
+        inset-x-0
+        bottom-0
+        h-32
+        bg-gradient-to-t
+        from-[#020617]
+        to-transparent
+      "
+    />
+
+    {/* Ambient purple light */}
+
+    <div
+      className="
+        absolute
+        left-[5%]
+        top-[20%]
+        h-72
+        w-72
+        rounded-full
+        bg-purple-600/10
+        blur-[130px]
+      "
+    />
+
+    {/* Ambient blue light */}
+
+    <div
+      className="
+        absolute
+        right-[20%]
+        top-[15%]
+        h-72
+        w-72
+        rounded-full
+        bg-blue-500/10
+        blur-[140px]
+      "
+    />
+
+  </div>
+
+
+  {/* =========================================================
+      MOBILE IMAGE PANEL
+
+      This is completely separate from the content.
+
+      ONLY MOBILE:
+      - Image sits at the top.
+      - Content starts BELOW it.
+      - overflow-hidden crops the image.
+      - object-right prioritizes the RIGHT side.
+      ========================================================= */}
+
+  <div
+    className="
+      relative
+        mt-[0px]
+      z-10
+      h-[330px]
+      w-full
+      overflow-hidden
+      md:hidden
+    "
+  >
+
+    <img
+      src="/hero-bos-mobile.png"
+      alt="BOS business operating system"
+      className="
+    
+        absolute
+        inset-0
+        h-full
+        w-full
+        object-cover
+        object-right
+      "
+    />
+
+    {/* Bottom blend into page */}
+
+    <div
+      className="
+        pointer-events-none
+        absolute
+        inset-x-0
+        bottom-0
+        h-32
+        bg-gradient-to-t
+        from-[#020617]
+        to-transparent
+      "
+    />
+
+    {/* Slight top darkness */}
+
+    <div
+      className="
+        pointer-events-none
+        absolute
+        inset-x-0
+        top-0
+        h-16
+        bg-gradient-to-b
+        from-[#020617]/30
+        to-transparent
+      "
+    />
+
+  </div>
+
+
+  {/* =========================================================
+      HERO CONTENT
+
+      Mobile:
+      Content naturally sits BELOW the image.
+
+      Desktop:
+      Content overlays the background.
+      ========================================================= */}
+
+  <div
+    className="
+      relative
+      z-30
+      mx-auto
+      flex
+      w-full
+      max-w-[1500px]
+      items-start
+
+      px-6
+      pb-16
+      pt-4
+
+      md:min-h-[calc(100vh-72px)]
+      md:px-8
+      md:pb-20
+      md:pt-12
+
+      lg:min-h-[820px]
+      lg:px-12
+      lg:pt-12
+
+      xl:px-16
+    "
+  >
+
+    {/* =======================================================
+        LEFT CONTENT
+        ======================================================= */}
+
+    <div
+      className="
+        w-full
+        max-w-[570px]
+        lg:max-w-[580px]
+      "
+    >
+
+
+      {/* =====================================================
+          EYEBROW
+          ===================================================== */}
+
+      <div
+        className="
+          mb-6
+          inline-flex
+          animate-[fadeInUp_.7s_ease-out_both]
+          items-center
+          gap-2
+          rounded-full
+          border
+          border-purple-400/30
+          bg-purple-950/40
+          px-4
+          py-2
+          text-[10px]
+          font-semibold
+          uppercase
+          tracking-[0.18em]
+          text-purple-200
+          shadow-lg
+          shadow-purple-950/20
+          backdrop-blur-md
+          sm:text-[11px]
+        "
+      >
+
+        <span className="relative flex h-2 w-2 shrink-0">
+
+          <span
+            className="
+              absolute
+              inline-flex
+              h-full
+              w-full
+              animate-ping
+              rounded-full
+              bg-purple-400
+              opacity-60
+            "
+          />
+
+          <span
+            className="
+              relative
+              inline-flex
+              h-2
+              w-2
+              rounded-full
+              bg-purple-400
+            "
+          />
+
+        </span>
+
+        <span>Automate</span>
+
+        <span className="text-purple-400">•</span>
+
+        <span>Operate</span>
+
+        <span className="text-purple-400">•</span>
+
+        <span>Grow</span>
+
+      </div>
+
+
+      {/* =====================================================
+          MAIN HEADLINE
+          ===================================================== */}
+
+      <h1
+        className="
+          max-w-[560px]
+          animate-[fadeInUp_.8s_.1s_ease-out_both]
+          text-[34px]
+          font-extrabold
+          leading-[1.02]
+          tracking-[-0.045em]
+          text-white
+          drop-shadow-2xl
+
+          sm:text-[40px]
+
+          lg:text-[46px]
+
+          xl:text-[50px]
+        "
+      >
+
+        Automate your
+
+        <br />
+
+        system and take a
+
+        <br />
+
+        <span
+          className="
+            bg-gradient-to-r
+            from-purple-400
+            via-violet-300
+            to-cyan-400
+            bg-clip-text
+            text-transparent
+          "
+        >
+          vacation.
+        </span>
+
+      </h1>
+
+
+      {/* =====================================================
+          DESCRIPTION
+          ===================================================== */}
+
+      <p
+        className="
+          mt-6
+          max-w-[525px]
+          animate-[fadeInUp_.8s_.2s_ease-out_both]
+          text-sm
+          leading-6
+          text-white/85
+          drop-shadow-lg
+
+          sm:text-base
+          sm:leading-7
+        "
+      >
+        BOS connects your campaigns, customers, sales, operations,
+        SOPs, finance and customer success — so your business keeps
+        running, even when you&apos;re away.
+      </p>
+
+
+      {/* =====================================================
+          FEATURE HIGHLIGHTS
+          ===================================================== */}
+
+      <div
+        className="
+          mt-7
+          flex
+          max-w-[570px]
+          flex-wrap
+          items-center
+          gap-y-4
+          animate-[fadeInUp_.8s_.3s_ease-out_both]
+        "
+      >
+
+
+        {/* FEATURE 1 */}
+
+        <div className="flex items-center gap-2.5 pr-5">
+
+          <div
+            className="
+              flex
+              h-8
+              w-8
+              shrink-0
+              items-center
+              justify-center
+              rounded-lg
+              border
+              border-purple-400/20
+              bg-purple-950/60
+              text-purple-400
+              backdrop-blur-md
+            "
+          >
+
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              className="h-4 w-4"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8Z" />
+            </svg>
+
+          </div>
+
+          <div>
+
+            <p className="text-xs font-semibold text-white">
+              Automated
             </p>
 
-            <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Button
-                size="lg"
-                asChild
-                className="h-12 w-full rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 px-7 text-base font-semibold text-white shadow-xl shadow-purple-900/30 hover:from-purple-500 hover:to-blue-500 sm:w-auto"
-              >
-                <Link to="/login">
-                  Start building your workspace
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
+            <p className="text-[10px] text-white/60">
+              workflows
+            </p>
 
-              <Button
-                size="lg"
-                variant="outline"
-                asChild
-                className="h-12 w-full rounded-xl border-white/10 bg-white/[0.02] px-7 text-base text-slate-200 hover:bg-white/[0.06] sm:w-auto"
-              >
-                <a href="#workflow">
-                  <Play className="mr-2 h-4 w-4" />
-                  See the workflow
-                </a>
-              </Button>
-            </div>
-
-            {/* Trust/positioning line */}
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[11px] uppercase tracking-[0.16em] text-slate-600">
-              <span>CRM</span>
-              <span>•</span>
-              <span>Operations</span>
-              <span>•</span>
-              <span>SOPs</span>
-              <span>•</span>
-              <span>Finance</span>
-              <span>•</span>
-              <span>Customer Success</span>
-            </div>
           </div>
-        </section>
+
+        </div>
+
+
+        {/* DIVIDER */}
+
+        <div className="hidden h-8 w-px bg-white/20 sm:block" />
+
+
+        {/* FEATURE 2 */}
+
+        <div className="flex items-center gap-2.5 px-0 sm:px-5">
+
+          <div
+            className="
+              flex
+              h-8
+              w-8
+              shrink-0
+              items-center
+              justify-center
+              rounded-lg
+              border
+              border-purple-400/20
+              bg-purple-950/60
+              text-purple-400
+              backdrop-blur-md
+            "
+          >
+
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              className="h-4 w-4"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+              <path d="m9 12 2 2 4-4" />
+            </svg>
+
+          </div>
+
+          <div>
+
+            <p className="text-xs font-semibold text-white">
+              Real-time
+            </p>
+
+            <p className="text-[10px] text-white/60">
+              visibility
+            </p>
+
+          </div>
+
+        </div>
+
+
+        {/* DIVIDER */}
+
+        <div className="hidden h-8 w-px bg-white/20 sm:block" />
+
+
+        {/* FEATURE 3 */}
+
+        <div className="flex items-center gap-2.5 px-0 sm:px-5">
+
+          <div
+            className="
+              flex
+              h-8
+              w-8
+              shrink-0
+              items-center
+              justify-center
+              rounded-lg
+              border
+              border-purple-400/20
+              bg-purple-950/60
+              text-purple-400
+              backdrop-blur-md
+            "
+          >
+
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              className="h-4 w-4"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+
+          </div>
+
+          <div>
+
+            <p className="text-xs font-semibold text-white">
+              Less manual
+            </p>
+
+            <p className="text-[10px] text-white/60">
+              work
+            </p>
+
+          </div>
+
+        </div>
+
+
+        {/* DIVIDER */}
+
+        <div className="hidden h-8 w-px bg-white/20 sm:block" />
+
+
+        {/* FEATURE 4 */}
+
+        <div className="flex items-center gap-2.5 px-0 sm:pl-5">
+
+          <div
+            className="
+              flex
+              h-8
+              w-8
+              shrink-0
+              items-center
+              justify-center
+              rounded-lg
+              border
+              border-purple-400/20
+              bg-purple-950/60
+              text-purple-400
+              backdrop-blur-md
+            "
+          >
+
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              className="h-4 w-4"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M3 3v18h18" />
+              <path d="m7 16 4-5 3 3 6-8" />
+            </svg>
+
+          </div>
+
+          <div>
+
+            <p className="text-xs font-semibold text-white">
+              More time
+            </p>
+
+            <p className="text-[10px] text-white/60">
+              for what matters
+            </p>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      {/* =====================================================
+          CALL TO ACTIONS
+          ===================================================== */}
+
+      <div
+        className="
+          mt-8
+          flex
+          animate-[fadeInUp_.8s_.4s_ease-out_both]
+          flex-col
+          gap-3
+
+          sm:flex-row
+        "
+      >
+
+
+        {/* PRIMARY CTA */}
+
+        <Button
+          size="lg"
+          asChild
+          className="
+            group
+            h-12
+            rounded-xl
+            bg-gradient-to-r
+            from-purple-600
+            via-violet-600
+            to-blue-600
+            px-6
+            text-sm
+            font-semibold
+            text-white
+            shadow-2xl
+            shadow-purple-900/50
+            transition-all
+            duration-300
+
+            hover:-translate-y-0.5
+            hover:from-purple-500
+            hover:via-violet-500
+            hover:to-blue-500
+
+            sm:text-base
+          "
+        >
+
+          <Link to="/login">
+
+            Start building your workspace
+
+            <ArrowRight
+              className="
+                ml-2
+                h-4
+                w-4
+                transition-transform
+                duration-300
+                group-hover:translate-x-1
+              "
+            />
+
+          </Link>
+
+        </Button>
+
+
+        {/* SECONDARY CTA */}
+
+        <Button
+          size="lg"
+          variant="outline"
+          asChild
+          className="
+            group
+            h-12
+            rounded-xl
+            border-white/25
+            bg-black/30
+            px-6
+            text-sm
+            text-white
+            backdrop-blur-md
+            transition-all
+            duration-300
+
+            hover:-translate-y-0.5
+            hover:border-purple-400/50
+            hover:bg-white/10
+
+            sm:text-base
+          "
+        >
+
+          <a href="#workflow">
+
+            <Play
+              className="
+                mr-2
+                h-4
+                w-4
+                transition-transform
+                duration-300
+                group-hover:scale-110
+              "
+            />
+
+            See how it works
+
+          </a>
+
+        </Button>
+
+      </div>
+
+
+      {/* =====================================================
+          POSITIONING LINE
+          ===================================================== */}
+
+      <div
+        className="
+          mt-7
+          flex
+          flex-wrap
+          items-center
+          gap-x-4
+          gap-y-2
+          animate-[fadeInUp_.8s_.5s_ease-out_both]
+          text-[9px]
+          font-medium
+          uppercase
+          tracking-[0.18em]
+          text-white/60
+
+          sm:text-[10px]
+        "
+      >
+
+        <span>CRM</span>
+
+        <span className="text-purple-400">•</span>
+
+        <span>Operations</span>
+
+        <span className="text-purple-400">•</span>
+
+        <span>SOPs</span>
+
+        <span className="text-purple-400">•</span>
+
+        <span>Finance</span>
+
+        <span className="text-purple-400">•</span>
+
+        <span>Customer Success</span>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  {/* =========================================================
+      DESKTOP DECORATIVE LIGHT STREAKS
+      Hidden on mobile.
+      ========================================================= */}
+
+  <div
+    className="
+      pointer-events-none
+      absolute
+      left-[48%]
+      top-[32%]
+      z-20
+      hidden
+      h-px
+      w-28
+      rotate-[24deg]
+      bg-gradient-to-r
+      from-transparent
+      via-cyan-400/40
+      to-transparent
+
+      md:block
+    "
+  />
+
+  <div
+    className="
+      pointer-events-none
+      absolute
+      right-[32%]
+      top-[44%]
+      z-20
+      hidden
+      h-px
+      w-24
+      -rotate-[15deg]
+      bg-gradient-to-r
+      from-transparent
+      via-purple-400/40
+      to-transparent
+
+      md:block
+    "
+  />
+
+</section>
 
         {/* =========================================================
             SYSTEM PREVIEW
         ========================================================== */}
 
-        <section id="workflow" className="relative px-4 pb-28 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-6xl">
-            <div className="relative overflow-hidden rounded-2xl border border-white/[0.09] bg-[#080914]/90 shadow-2xl shadow-purple-950/20">
-              {/* Browser bar */}
-              <div className="flex h-11 items-center justify-between border-b border-white/[0.07] bg-white/[0.025] px-4">
-                <div className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-full bg-red-400/70" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-yellow-400/70" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-green-400/70" />
-                </div>
+<section
+  id="workflow"
+  className="
+    relative
+    px-4
+    pb-20
+    sm:px-6
+    sm:pb-24
+    lg:px-8
+    lg:pb-28
+  "
+>
+  <div className="mx-auto max-w-6xl">
 
-                <div className="hidden items-center gap-2 rounded-md border border-white/[0.06] bg-black/20 px-3 py-1 text-[10px] text-slate-600 sm:flex">
-                  <ShieldCheck className="h-3 w-3" />
-                  app.rstbos.com/workspace
-                </div>
+    <div
+      className="
+        relative
+        overflow-hidden
+        rounded-xl
+        border
+        border-white/[0.09]
+        bg-[#080914]/90
+        shadow-2xl
+        shadow-purple-950/20
 
-                <div className="text-[10px] text-slate-600">
-                  RST BOS
-                </div>
-              </div>
+        sm:rounded-2xl
+      "
+    >
 
-              <div className="grid min-h-[480px] lg:grid-cols-[210px_1fr]">
-                {/* Fake sidebar */}
-                <aside className="hidden border-r border-white/[0.07] bg-black/10 p-4 lg:block">
-                  <div className="mb-7 flex items-center gap-2">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-500/10">
-                      <Workflow className="h-4 w-4 text-purple-400" />
-                    </div>
-                    <span className="text-xs font-bold">BOS</span>
-                  </div>
+      {/* =====================================================
+          BROWSER / APP BAR
+          ===================================================== */}
 
-                  <div className="space-y-5 text-[11px]">
-                    <div>
-                      <p className="mb-2 px-2 text-[9px] font-semibold uppercase tracking-widest text-slate-600">
-                        Workspace
-                      </p>
+      <div
+        className="
+          flex
+          h-10
+          items-center
+          justify-between
+          border-b
+          border-white/[0.07]
+          bg-white/[0.025]
+          px-3
 
-                      <div className="rounded-lg bg-purple-500/10 px-2.5 py-2 text-purple-300">
-                        Dashboard
-                      </div>
+          sm:h-11
+          sm:px-4
+        "
+      >
 
-                      <div className="mt-1 px-2.5 py-2 text-slate-500">
-                        My Work
-                      </div>
-                    </div>
+        {/* Browser dots */}
 
-                    <div>
-                      <p className="mb-2 px-2 text-[9px] font-semibold uppercase tracking-widest text-slate-600">
-                        Outreach & CRM
-                      </p>
+        <div className="flex items-center gap-1.5">
 
-                      {[
-                        "Prospects",
-                        "Campaigns",
-                        "Leads",
-                        "Opportunities",
-                        "Activities",
-                        "Proposals",
-                        "Deals",
-                      ].map((item) => (
-                        <div
-                          key={item}
-                          className="px-2.5 py-1.5 text-slate-500"
-                        >
-                          {item}
-                        </div>
-                      ))}
-                    </div>
+          <span className="h-2 w-2 rounded-full bg-red-400/70 sm:h-2.5 sm:w-2.5" />
 
-                    <div>
-                      <p className="mb-2 px-2 text-[9px] font-semibold uppercase tracking-widest text-slate-600">
-                        Operations
-                      </p>
+          <span className="h-2 w-2 rounded-full bg-yellow-400/70 sm:h-2.5 sm:w-2.5" />
 
-                      {[
-                        "Jobs / Projects",
-                        "SOP Templates",
-                        "Approvals",
-                        "Scheduling",
-                        "QC & Handover",
-                      ].map((item) => (
-                        <div
-                          key={item}
-                          className="px-2.5 py-1.5 text-slate-500"
-                        >
-                          {item}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </aside>
+          <span className="h-2 w-2 rounded-full bg-green-400/70 sm:h-2.5 sm:w-2.5" />
 
-                {/* Main simulation */}
-                <div className="relative p-5 sm:p-7 lg:p-9">
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(124,58,237,0.10),transparent_35%)]" />
+        </div>
 
-                  <div className="relative">
-                    <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                      <div>
-                        <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-purple-400">
-                          Live workspace simulation
-                        </div>
-                        <h2 className="text-xl font-bold tracking-tight">
-                          Customer lifecycle
-                        </h2>
-                      </div>
 
-                      <div className="flex items-center gap-2 rounded-full border border-emerald-400/15 bg-emerald-400/[0.06] px-3 py-1.5 text-[10px] text-emerald-300">
-                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-                        System operational
-                      </div>
-                    </div>
+        {/* Desktop URL */}
 
-                    {/* Lifecycle rail */}
-                    <div className="mt-8 overflow-x-auto pb-3">
-                      <div className="flex min-w-[760px] items-center">
-                        {flowSteps.map((step, index) => {
-                          const Icon = step.icon;
-                          const active = activeFlow === index;
-                          const complete = index < activeFlow;
+        <div
+          className="
+            hidden
+            items-center
+            gap-2
+            rounded-md
+            border
+            border-white/[0.06]
+            bg-black/20
+            px-3
+            py-1
+            text-[10px]
+            text-slate-600
 
-                          return (
-                            <div
-                              key={step.label}
-                              className="flex flex-1 items-center"
-                            >
-                              <button
-                                onClick={() => setActiveFlow(index)}
-                                className={`group flex min-w-[95px] flex-col items-center gap-2 transition-all ${
-                                  active
-                                    ? "text-white"
-                                    : "text-slate-600 hover:text-slate-300"
-                                }`}
-                              >
-                                <div
-                                  className={`flex h-10 w-10 items-center justify-center rounded-xl border transition-all ${
-                                    active
-                                      ? "border-purple-400/40 bg-gradient-to-br from-purple-500/20 to-blue-500/20 text-purple-300 shadow-lg shadow-purple-900/20"
-                                      : complete
-                                      ? "border-emerald-400/20 bg-emerald-400/[0.05] text-emerald-400"
-                                      : "border-white/[0.07] bg-white/[0.02]"
-                                  }`}
-                                >
-                                  {complete ? (
-                                    <Check className="h-4 w-4" />
-                                  ) : (
-                                    <Icon className="h-4 w-4" />
-                                  )}
-                                </div>
+            sm:flex
+          "
+        >
 
-                                <span className="text-[10px] font-medium">
-                                  {step.label}
-                                </span>
-                              </button>
+          <ShieldCheck className="h-3 w-3" />
 
-                              {index < flowSteps.length - 1 && (
-                                <div className="mx-1 h-px flex-1 bg-gradient-to-r from-white/[0.10] to-white/[0.04]" />
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
+          app.rstbos.com/workspace
 
-                    {/* Active workflow panel */}
-                    <div className="mt-8 grid gap-5 lg:grid-cols-[1.15fr_.85fr]">
-                      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.025] p-6">
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <div className="mb-2 inline-flex items-center gap-2 rounded-md border border-purple-400/15 bg-purple-400/[0.06] px-2 py-1 text-[9px] font-semibold uppercase tracking-widest text-purple-300">
-                              Phase {activeFlow + 1}
-                            </div>
+        </div>
 
-                            <h3 className="text-2xl font-bold tracking-tight">
-                              {currentStep.title}
-                            </h3>
-                          </div>
 
-                          <CurrentIcon className="h-6 w-6 text-purple-400" />
-                        </div>
+        {/* Mobile app title */}
 
-                        <p className="mt-4 max-w-xl text-sm leading-6 text-slate-400">
-                          {currentStep.description}
-                        </p>
+        <div
+          className="
+            text-[9px]
+            font-medium
+            text-slate-500
 
-                        <div className="mt-6 flex flex-wrap gap-2">
-                          <span className="rounded-md border border-white/[0.07] bg-black/20 px-2.5 py-1.5 text-[10px] text-slate-400">
-                            {currentStep.status}
-                          </span>
+            sm:text-[10px]
+            sm:text-slate-600
+          "
+        >
+          RST BOS
+        </div>
 
-                          <span className="rounded-md border border-white/[0.07] bg-black/20 px-2.5 py-1.5 text-[10px] text-slate-400">
-                            {currentStep.metric}
-                          </span>
+      </div>
 
-                          <span className="rounded-md border border-emerald-400/10 bg-emerald-400/[0.04] px-2.5 py-1.5 text-[10px] text-emerald-300">
-                            Real-time
-                          </span>
-                        </div>
-                      </div>
 
-                      {/* Activity terminal */}
-                      <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#04050b]">
-                        <div className="flex items-center justify-between border-b border-white/[0.07] px-4 py-3">
-                          <div className="flex items-center gap-2 text-[10px] text-slate-500">
-                            <Terminal className="h-3.5 w-3.5 text-purple-400" />
-                            Activity stream
-                          </div>
+      {/* =====================================================
+          APP LAYOUT
+          ===================================================== */}
 
-                          <span className="text-[9px] text-emerald-400">
-                            LIVE
-                          </span>
-                        </div>
+      <div
+        className="
+          grid
+          min-h-[auto]
 
-                        <div className="p-4 font-mono text-[10px] leading-6">
-                          {terminalLines
-                            .slice(
-                              Math.max(0, terminalLine - 5),
-                              terminalLine + 1
-                            )
-                            .map((line, index) => (
-                              <div
-                                key={`${line}-${index}`}
-                                className={`transition-opacity ${
-                                  index ===
-                                  Math.min(
-                                    5,
-                                    terminalLine
-                                  )
-                                    ? "text-purple-300"
-                                    : "text-slate-600"
-                                }`}
-                              >
-                                <span className="mr-2 text-slate-700">
-                                  $
-                                </span>
-                                {line}
-                              </div>
-                            ))}
+          lg:min-h-[480px]
+          lg:grid-cols-[210px_1fr]
+        "
+      >
 
-                          <div className="mt-2 flex items-center gap-2 text-emerald-400">
-                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-                            workflow synchronized
-                          </div>
-                        </div>
-                      </div>
-                    </div>
 
-                    {/* Progress */}
-                    <div className="mt-6">
-                      <div className="mb-2 flex justify-between text-[9px] uppercase tracking-widest text-slate-600">
-                        <span>Customer lifecycle</span>
-                        <span>
-                          {Math.round(
-                            ((activeFlow + 1) / flowSteps.length) * 100
-                          )}
-                          %
-                        </span>
-                      </div>
+        {/* ===================================================
+            DESKTOP SIDEBAR
+            Hidden below lg.
+            =================================================== */}
 
-                      <div className="h-1 overflow-hidden rounded-full bg-white/[0.05]">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 transition-all duration-700"
-                          style={{
-                            width: `${
-                              ((activeFlow + 1) / flowSteps.length) * 100
-                            }%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+        <aside
+          className="
+            hidden
+            border-r
+            border-white/[0.07]
+            bg-black/10
+            p-4
+
+            lg:block
+          "
+        >
+
+          {/* Logo */}
+
+          <div className="mb-7 flex items-center gap-2">
+
+            <div
+              className="
+                flex
+                h-7
+                w-7
+                items-center
+                justify-center
+                rounded-lg
+                bg-purple-500/10
+              "
+            >
+              <Workflow className="h-4 w-4 text-purple-400" />
             </div>
-          </div>
-        </section>
 
+            <span className="text-xs font-bold">
+              BOS
+            </span>
+
+          </div>
+
+
+          <div className="space-y-5 text-[11px]">
+
+
+            {/* Workspace */}
+
+            <div>
+
+              <p
+                className="
+                  mb-2
+                  px-2
+                  text-[9px]
+                  font-semibold
+                  uppercase
+                  tracking-widest
+                  text-slate-600
+                "
+              >
+                Workspace
+              </p>
+
+
+              <div
+                className="
+                  rounded-lg
+                  bg-purple-500/10
+                  px-2.5
+                  py-2
+                  text-purple-300
+                "
+              >
+                Dashboard
+              </div>
+
+
+              <div
+                className="
+                  mt-1
+                  px-2.5
+                  py-2
+                  text-slate-500
+                "
+              >
+                My Work
+              </div>
+
+            </div>
+
+
+            {/* Outreach */}
+
+            <div>
+
+              <p
+                className="
+                  mb-2
+                  px-2
+                  text-[9px]
+                  font-semibold
+                  uppercase
+                  tracking-widest
+                  text-slate-600
+                "
+              >
+                Outreach & CRM
+              </p>
+
+
+              {[
+                "Prospects",
+                "Campaigns",
+                "Leads",
+                "Opportunities",
+                "Activities",
+                "Proposals",
+                "Deals",
+              ].map((item) => (
+
+                <div
+                  key={item}
+                  className="
+                    px-2.5
+                    py-1.5
+                    text-slate-500
+                  "
+                >
+                  {item}
+                </div>
+
+              ))}
+
+            </div>
+
+
+            {/* Operations */}
+
+            <div>
+
+              <p
+                className="
+                  mb-2
+                  px-2
+                  text-[9px]
+                  font-semibold
+                  uppercase
+                  tracking-widest
+                  text-slate-600
+                "
+              >
+                Operations
+              </p>
+
+
+              {[
+                "Jobs / Projects",
+                "SOP Templates",
+                "Approvals",
+                "Scheduling",
+                "QC & Handover",
+              ].map((item) => (
+
+                <div
+                  key={item}
+                  className="
+                    px-2.5
+                    py-1.5
+                    text-slate-500
+                  "
+                >
+                  {item}
+                </div>
+
+              ))}
+
+            </div>
+
+          </div>
+
+        </aside>
+
+
+        {/* ===================================================
+            MAIN APP CONTENT
+            =================================================== */}
+
+        <div
+          className="
+            relative
+            min-w-0
+            p-4
+
+            sm:p-6
+
+            lg:p-9
+          "
+        >
+
+          {/* Background glow */}
+
+          <div
+            className="
+              pointer-events-none
+              absolute
+              inset-0
+              bg-[radial-gradient(circle_at_80%_20%,rgba(124,58,237,0.10),transparent_35%)]
+            "
+          />
+
+
+          <div className="relative">
+
+
+            {/* =================================================
+                APP HEADER
+                ================================================= */}
+
+            <div
+              className="
+                flex
+                flex-col
+                gap-3
+
+                sm:flex-row
+                sm:items-center
+                sm:justify-between
+                sm:gap-4
+              "
+            >
+
+              <div>
+
+                <div
+                  className="
+                    mb-1
+                    text-[9px]
+                    uppercase
+                    tracking-[0.16em]
+                    text-purple-400
+
+                    sm:text-[10px]
+                    sm:tracking-[0.18em]
+                  "
+                >
+                  Live workspace simulation
+                </div>
+
+
+                <h2
+                  className="
+                    text-lg
+                    font-bold
+                    tracking-tight
+
+                    sm:text-xl
+                  "
+                >
+                  Customer lifecycle
+                </h2>
+
+              </div>
+
+
+              {/* System status */}
+
+              <div
+                className="
+                  flex
+                  w-fit
+                  items-center
+                  gap-2
+                  rounded-full
+                  border
+                  border-emerald-400/15
+                  bg-emerald-400/[0.06]
+                  px-3
+                  py-1.5
+                  text-[9px]
+                  text-emerald-300
+
+                  sm:text-[10px]
+                "
+              >
+
+                <span
+                  className="
+                    h-1.5
+                    w-1.5
+                    animate-pulse
+                    rounded-full
+                    bg-emerald-400
+                  "
+                />
+
+                System operational
+
+              </div>
+
+            </div>
+
+
+            {/* =================================================
+                MOBILE WORKFLOW NAVIGATION
+
+                Horizontal touch scrolling.
+                This behaves like a real mobile app.
+                ================================================= */}
+
+            <div
+              className="
+                mt-6
+                -mx-4
+                overflow-x-auto
+                px-4
+                pb-3
+
+                sm:mx-0
+                sm:px-0
+
+                lg:hidden
+              "
+            >
+
+              <div className="flex w-max items-start gap-2">
+
+                {flowSteps.map((step, index) => {
+
+                  const Icon = step.icon;
+
+                  const active =
+                    activeFlow === index;
+
+                  const complete =
+                    index < activeFlow;
+
+
+                  return (
+
+                    <button
+                      key={step.label}
+                      onClick={() =>
+                        setActiveFlow(index)
+                      }
+                      className={`
+                        flex
+                        min-w-[78px]
+                        flex-col
+                        items-center
+                        gap-2
+                        rounded-xl
+                        border
+                        px-3
+                        py-3
+                        transition-all
+                        active:scale-95
+
+                        ${
+                          active
+                            ? `
+                              border-purple-400/30
+                              bg-purple-500/10
+                              text-white
+                            `
+                            : complete
+                            ? `
+                              border-emerald-400/15
+                              bg-emerald-400/[0.04]
+                              text-emerald-400
+                            `
+                            : `
+                              border-white/[0.07]
+                              bg-white/[0.02]
+                              text-slate-500
+                            `
+                        }
+                      `}
+                    >
+
+                      <div
+                        className={`
+                          flex
+                          h-8
+                          w-8
+                          items-center
+                          justify-center
+                          rounded-lg
+
+                          ${
+                            active
+                              ? `
+                                bg-gradient-to-br
+                                from-purple-500/20
+                                to-blue-500/20
+                                text-purple-300
+                              `
+                              : ""
+                          }
+                        `}
+                      >
+
+                        {complete ? (
+
+                          <Check className="h-4 w-4" />
+
+                        ) : (
+
+                          <Icon className="h-4 w-4" />
+
+                        )}
+
+                      </div>
+
+
+                      <span
+                        className="
+                          max-w-[75px]
+                          text-center
+                          text-[9px]
+                          font-medium
+                          leading-tight
+                        "
+                      >
+                        {step.label}
+                      </span>
+
+                    </button>
+
+                  );
+
+                })}
+
+              </div>
+
+            </div>
+
+
+            {/* =================================================
+                DESKTOP LIFECYCLE RAIL
+                ================================================= */}
+
+            <div
+              className="
+                mt-8
+                hidden
+                overflow-x-auto
+                pb-3
+
+                lg:block
+              "
+            >
+
+              <div className="flex min-w-[760px] items-center">
+
+                {flowSteps.map((step, index) => {
+
+                  const Icon = step.icon;
+
+                  const active =
+                    activeFlow === index;
+
+                  const complete =
+                    index < activeFlow;
+
+
+                  return (
+
+                    <div
+                      key={step.label}
+                      className="
+                        flex
+                        flex-1
+                        items-center
+                      "
+                    >
+
+                      <button
+                        onClick={() =>
+                          setActiveFlow(index)
+                        }
+                        className={`
+                          group
+                          flex
+                          min-w-[95px]
+                          flex-col
+                          items-center
+                          gap-2
+                          transition-all
+
+                          ${
+                            active
+                              ? "text-white"
+                              : `
+                                text-slate-600
+                                hover:text-slate-300
+                              `
+                          }
+                        `}
+                      >
+
+                        <div
+                          className={`
+                            flex
+                            h-10
+                            w-10
+                            items-center
+                            justify-center
+                            rounded-xl
+                            border
+                            transition-all
+
+                            ${
+                              active
+                                ? `
+                                  border-purple-400/40
+                                  bg-gradient-to-br
+                                  from-purple-500/20
+                                  to-blue-500/20
+                                  text-purple-300
+                                  shadow-lg
+                                  shadow-purple-900/20
+                                `
+                                : complete
+                                ? `
+                                  border-emerald-400/20
+                                  bg-emerald-400/[0.05]
+                                  text-emerald-400
+                                `
+                                : `
+                                  border-white/[0.07]
+                                  bg-white/[0.02]
+                                `
+                            }
+                          `}
+                        >
+
+                          {complete ? (
+
+                            <Check className="h-4 w-4" />
+
+                          ) : (
+
+                            <Icon className="h-4 w-4" />
+
+                          )}
+
+                        </div>
+
+
+                        <span
+                          className="
+                            text-[10px]
+                            font-medium
+                          "
+                        >
+                          {step.label}
+                        </span>
+
+                      </button>
+
+
+                      {index <
+                        flowSteps.length - 1 && (
+
+                        <div
+                          className="
+                            mx-1
+                            h-px
+                            flex-1
+                            bg-gradient-to-r
+                            from-white/[0.10]
+                            to-white/[0.04]
+                          "
+                        />
+
+                      )}
+
+                    </div>
+
+                  );
+
+                })}
+
+              </div>
+
+            </div>
+
+
+            {/* =================================================
+                ACTIVE WORKFLOW CONTENT
+                ================================================= */}
+
+            <div
+              className="
+                mt-5
+                grid
+                gap-4
+
+                sm:mt-6
+                sm:gap-5
+
+                lg:mt-8
+                lg:grid-cols-[1.15fr_.85fr]
+              "
+            >
+
+
+              {/* ===============================================
+                  WORKFLOW CARD
+                  =============================================== */}
+
+              <div
+                className="
+                  rounded-xl
+                  border
+                  border-white/[0.08]
+                  bg-white/[0.025]
+                  p-4
+
+                  sm:rounded-2xl
+                  sm:p-6
+                "
+              >
+
+                <div
+                  className="
+                    flex
+                    items-start
+                    justify-between
+                    gap-3
+
+                    sm:gap-4
+                  "
+                >
+
+                  <div>
+
+                    <div
+                      className="
+                        mb-2
+                        inline-flex
+                        items-center
+                        gap-2
+                        rounded-md
+                        border
+                        border-purple-400/15
+                        bg-purple-400/[0.06]
+                        px-2
+                        py-1
+                        text-[8px]
+                        font-semibold
+                        uppercase
+                        tracking-widest
+                        text-purple-300
+
+                        sm:text-[9px]
+                      "
+                    >
+                      Phase {activeFlow + 1}
+                    </div>
+
+
+                    <h3
+                      className="
+                        text-xl
+                        font-bold
+                        tracking-tight
+
+                        sm:text-2xl
+                      "
+                    >
+                      {currentStep.title}
+                    </h3>
+
+                  </div>
+
+
+                  <div
+                    className="
+                      flex
+                      h-9
+                      w-9
+                      shrink-0
+                      items-center
+                      justify-center
+                      rounded-xl
+                      border
+                      border-purple-400/10
+                      bg-purple-500/[0.05]
+
+                      sm:h-auto
+                      sm:w-auto
+                      sm:border-0
+                      sm:bg-transparent
+                    "
+                  >
+                    <CurrentIcon
+                      className="
+                        h-4
+                        w-4
+                        text-purple-400
+
+                        sm:h-6
+                        sm:w-6
+                      "
+                    />
+                  </div>
+
+                </div>
+
+
+                <p
+                  className="
+                    mt-4
+                    max-w-xl
+                    text-[13px]
+                    leading-6
+                    text-slate-400
+
+                    sm:text-sm
+                  "
+                >
+                  {currentStep.description}
+                </p>
+
+
+                {/* Status chips */}
+
+                <div
+                  className="
+                    mt-5
+                    flex
+                    flex-wrap
+                    gap-2
+
+                    sm:mt-6
+                  "
+                >
+
+                  <span
+                    className="
+                      rounded-md
+                      border
+                      border-white/[0.07]
+                      bg-black/20
+                      px-2.5
+                      py-1.5
+                      text-[9px]
+                      text-slate-400
+
+                      sm:text-[10px]
+                    "
+                  >
+                    {currentStep.status}
+                  </span>
+
+
+                  <span
+                    className="
+                      rounded-md
+                      border
+                      border-white/[0.07]
+                      bg-black/20
+                      px-2.5
+                      py-1.5
+                      text-[9px]
+                      text-slate-400
+
+                      sm:text-[10px]
+                    "
+                  >
+                    {currentStep.metric}
+                  </span>
+
+
+                  <span
+                    className="
+                      rounded-md
+                      border
+                      border-emerald-400/10
+                      bg-emerald-400/[0.04]
+                      px-2.5
+                      py-1.5
+                      text-[9px]
+                      text-emerald-300
+
+                      sm:text-[10px]
+                    "
+                  >
+                    Real-time
+                  </span>
+
+                </div>
+
+              </div>
+
+
+              {/* ===============================================
+                  ACTIVITY TERMINAL
+                  =============================================== */}
+
+              <div
+                className="
+                  overflow-hidden
+                  rounded-xl
+                  border
+                  border-white/[0.08]
+                  bg-[#04050b]
+
+                  sm:rounded-2xl
+                "
+              >
+
+                {/* Terminal header */}
+
+                <div
+                  className="
+                    flex
+                    items-center
+                    justify-between
+                    border-b
+                    border-white/[0.07]
+                    px-4
+                    py-3
+                  "
+                >
+
+                  <div
+                    className="
+                      flex
+                      items-center
+                      gap-2
+                      text-[9px]
+                      text-slate-500
+
+                      sm:text-[10px]
+                    "
+                  >
+
+                    <Terminal className="h-3.5 w-3.5 text-purple-400" />
+
+                    Activity stream
+
+                  </div>
+
+
+                  <span
+                    className="
+                      text-[8px]
+                      font-medium
+                      text-emerald-400
+
+                      sm:text-[9px]
+                    "
+                  >
+                    LIVE
+                  </span>
+
+                </div>
+
+
+                {/* Terminal content */}
+
+                <div
+                  className="
+                    min-h-[170px]
+                    p-4
+                    font-mono
+                    text-[9px]
+                    leading-6
+
+                    sm:min-h-0
+                    sm:text-[10px]
+                  "
+                >
+
+                  {terminalLines
+                    .slice(
+                      Math.max(
+                        0,
+                        terminalLine - 5
+                      ),
+                      terminalLine + 1
+                    )
+                    .map((line, index) => (
+
+                      <div
+                        key={`${line}-${index}`}
+                        className={`
+                          break-words
+                          transition-opacity
+
+                          ${
+                            index ===
+                            Math.min(
+                              5,
+                              terminalLine
+                            )
+                              ? "text-purple-300"
+                              : "text-slate-600"
+                          }
+                        `}
+                      >
+
+                        <span
+                          className="
+                            mr-2
+                            text-slate-700
+                          "
+                        >
+                          $
+                        </span>
+
+                        {line}
+
+                      </div>
+
+                    ))}
+
+
+                  {/* Live status */}
+
+                  <div
+                    className="
+                      mt-2
+                      flex
+                      items-center
+                      gap-2
+                      text-emerald-400
+                    "
+                  >
+
+                    <span
+                      className="
+                        h-1.5
+                        w-1.5
+                        animate-pulse
+                        rounded-full
+                        bg-emerald-400
+                      "
+                    />
+
+                    workflow synchronized
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+
+            {/* =================================================
+                PROGRESS
+                ================================================= */}
+
+            <div
+              className="
+                mt-5
+
+                sm:mt-6
+              "
+            >
+
+              <div
+                className="
+                  mb-2
+                  flex
+                  justify-between
+                  text-[8px]
+                  uppercase
+                  tracking-widest
+                  text-slate-600
+
+                  sm:text-[9px]
+                "
+              >
+
+                <span>
+                  Customer lifecycle
+                </span>
+
+
+                <span>
+
+                  {Math.round(
+                    ((activeFlow + 1) /
+                      flowSteps.length) *
+                      100
+                  )}
+
+                  %
+
+                </span>
+
+              </div>
+
+
+              <div
+                className="
+                  h-1.5
+                  overflow-hidden
+                  rounded-full
+                  bg-white/[0.05]
+                "
+              >
+
+                <div
+                  className="
+                    h-full
+                    rounded-full
+                    bg-gradient-to-r
+                    from-purple-500
+                    via-indigo-500
+                    to-blue-500
+                    transition-all
+                    duration-700
+                  "
+                  style={{
+                    width: `${
+                      ((activeFlow + 1) /
+                        flowSteps.length) *
+                      100
+                    }%`,
+                  }}
+                />
+
+              </div>
+
+            </div>
+
+
+            {/* =================================================
+                MOBILE SWIPE HINT
+                ================================================= */}
+
+            <div
+              className="
+                mt-4
+                flex
+                items-center
+                justify-center
+                gap-2
+                text-[9px]
+                text-slate-600
+
+                lg:hidden
+              "
+            >
+
+              <span>
+                Swipe to explore workflow
+              </span>
+
+              <span className="text-purple-400">
+                →
+              </span>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
         {/* =========================================================
             PLATFORM STATEMENT
         ========================================================== */}

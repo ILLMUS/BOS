@@ -1,0 +1,13 @@
+GRANT EXECUTE ON FUNCTION public.is_org_member(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.org_authority(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.shares_org_with(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.can_access_job(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.job_authority(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_stage_owner(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.active_org_id() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.job_org_id(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_org_admin(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_org_admin_for_job(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.has_role(uuid, public.app_role) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.has_org_role(uuid, uuid, public.app_role) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_admin_or_owner(uuid) TO authenticated;

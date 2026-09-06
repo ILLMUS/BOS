@@ -1,0 +1,173 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 33% 97%;
+    --foreground: 224 40% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 224 40% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 40% 12%;
+
+    --primary: 258 88% 58%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 24% 95%;
+    --secondary-foreground: 224 40% 12%;
+
+    --muted: 220 24% 96%;
+    --muted-foreground: 220 12% 46%;
+
+    --accent: 258 88% 58%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 79% 63%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 62% 42%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 94% 55%;
+    --warning-foreground: 0 0% 100%;
+
+    --locked: 220 14% 80%;
+    --locked-foreground: 220 12% 46%;
+
+    --border: 220 22% 91%;
+    --input: 220 22% 91%;
+    --ring: 258 88% 58%;
+
+    --radius: 0.75rem;
+
+    --gradient-yellow: 45 95% 55%;
+    --gradient-green: 152 62% 45%;
+    --gradient-white: 0 0% 100%;
+    --edge-glow: radial-gradient(
+      ellipse at 0% 0%,
+      hsl(var(--gradient-yellow) / 0.58) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse at 100% 0%,
+      hsl(var(--gradient-green) / 0.52) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse at 100% 100%,
+      hsl(var(--primary) / 0.34) 0%,
+      transparent 55%
+    );
+
+    --chart-1: 221 83% 58%;
+    --chart-2: 152 62% 42%;
+    --chart-3: 38 94% 55%;
+    --chart-4: 22 90% 58%;
+    --chart-5: 0 79% 63%;
+    --chart-6: 258 88% 58%;
+
+    --sidebar-background: 236 44% 10%;
+    --sidebar-foreground: 220 25% 88%;
+    --sidebar-primary: 258 88% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 236 34% 17%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 236 30% 20%;
+    --sidebar-ring: 258 88% 60%;
+  }
+
+  .dark {
+    --background: 236 30% 8%;
+    --foreground: 220 25% 92%;
+
+    --card: 236 28% 12%;
+    --card-foreground: 220 25% 92%;
+
+    --popover: 236 28% 12%;
+    --popover-foreground: 220 25% 92%;
+
+    --primary: 258 88% 65%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 236 24% 18%;
+    --secondary-foreground: 220 25% 92%;
+
+    --muted: 236 24% 17%;
+    --muted-foreground: 220 12% 62%;
+
+    --accent: 258 88% 65%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 55% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 90% 58%;
+    --warning-foreground: 0 0% 100%;
+
+    --locked: 236 16% 32%;
+    --locked-foreground: 220 12% 55%;
+
+    --border: 236 22% 20%;
+    --input: 236 22% 20%;
+    --ring: 258 88% 65%;
+
+    --chart-1: 221 83% 62%;
+    --chart-2: 152 55% 45%;
+    --chart-3: 38 90% 58%;
+    --chart-4: 22 85% 60%;
+    --chart-5: 0 70% 62%;
+    --chart-6: 258 88% 65%;
+
+    --sidebar-background: 236 44% 7%;
+    --sidebar-foreground: 220 25% 86%;
+    --sidebar-primary: 258 88% 62%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 236 34% 14%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 236 30% 16%;
+    --sidebar-ring: 258 88% 62%;
+
+    --edge-glow: radial-gradient(
+      ellipse at 0% 0%,
+      hsl(var(--gradient-yellow) / 0.14) 0%,
+      transparent 45%
+    ),
+    radial-gradient(
+      ellipse at 100% 0%,
+      hsl(var(--gradient-green) / 0.12) 0%,
+      transparent 45%
+    ),
+    radial-gradient(
+      ellipse at 100% 100%,
+      hsl(var(--gradient-white) / 0.08) 0%,
+      transparent 45%
+    );
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading;
+  }
+
+  /* Slim scrollbars for the app shell */
+  .thin-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+  .thin-scroll::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.3); border-radius: 9999px; }
+  .thin-scroll::-webkit-scrollbar-track { background: transparent; }
+}

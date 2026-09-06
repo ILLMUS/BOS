@@ -1,0 +1,1 @@
+ALTER FUNCTION public.ensure_my_workspace() SECURITY INVOKER;

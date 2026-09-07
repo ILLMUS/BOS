@@ -22,6 +22,7 @@ import JournalEntryDialog from "./JournalEntryDialog";
 import LedgerAccountDialog from "./LedgerAccountDialog";
 import AutoPostPanel from "./AutoPostPanel";
 import ReconcileTab from "./ReconcileTab";
+import AgeingTab from "./AgeingTab";
 
 
 function StatementList({ rows, empty }: { rows: AccountBalance[]; empty: string }) {
@@ -153,12 +154,17 @@ export default function LedgerTab() {
           <TabsTrigger value="accounts">Chart of accounts</TabsTrigger>
           <TabsTrigger value="autopost">Post records</TabsTrigger>
           <TabsTrigger value="reconcile">Reconciliation</TabsTrigger>
+          <TabsTrigger value="ageing">Ageing</TabsTrigger>
           <TabsTrigger value="trial">Trial balance</TabsTrigger>
           <TabsTrigger value="statements">Statements</TabsTrigger>
         </TabsList>
 
         <TabsContent value="autopost" className="mt-4">
           <AutoPostPanel orgId={ledger.orgId ?? null} accounts={ledger.accounts} entries={ledger.entries} onPosted={ledger.reload} />
+        </TabsContent>
+
+        <TabsContent value="ageing" className="mt-4">
+          <AgeingTab />
         </TabsContent>
 
         <TabsContent value="reconcile" className="mt-4">

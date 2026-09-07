@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { ACTIVITY_TYPE_LABELS, formatDate, type Account, type Activity, type ActivityType, type Contact } from "@/lib/crm";
+import { ACTIVITY_TYPE_LABELS, formatDateTime, type Account, type Activity, type ActivityType, type Contact } from "@/lib/crm";
 import { BellRing, CheckCircle2, Loader2, Plus } from "lucide-react";
 
 const TYPES: ActivityType[] = ["call", "email", "meeting", "note", "task", "follow_up"];
@@ -157,7 +157,7 @@ export default function OutreachTimeline() {
                   <div>
                     <span className="font-medium">{a.subject}</span>
                     <span className="ml-2 text-xs text-muted-foreground">
-                      {accountName(a.account_id) ? `${accountName(a.account_id)} · ` : ""}Due {formatDate(a.due_at!)}
+                      {accountName(a.account_id) ? `${accountName(a.account_id)} · ` : ""}Due {formatDateTime(a.due_at!)}
                     </span>
                     {overdue && <Badge variant="outline" className="ml-2 border-destructive/20 bg-destructive/10 text-destructive">Overdue</Badge>}
                   </div>
@@ -192,7 +192,7 @@ export default function OutreachTimeline() {
                 </div>
                 {a.body && <p className="mt-1 text-sm text-muted-foreground">{a.body}</p>}
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {a.completed_at ? `Completed ${formatDate(a.completed_at)}` : a.due_at ? `Due ${formatDate(a.due_at)}` : formatDate(a.created_at)}
+                  {a.completed_at ? `Completed ${formatDateTime(a.completed_at)}` : a.due_at ? `Due ${formatDateTime(a.due_at)}` : formatDateTime(a.created_at)}
                 </p>
               </CardContent>
             </Card>

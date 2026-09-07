@@ -131,12 +131,13 @@ export default function JobDetail() {
 
   const current = useMemo(() => stages.find((s) => s.id === selectedId) ?? null, [stages, selectedId]);
 
-  // Quotation steps use the built-in in-app quote editor instead of the
-  // generic dynamic field form.
-  const isQuoteStage = useMemo(() => {
-    const n = (current?.stage_name || "").toLowerCase();
-    return /quot/.test(n);
-  }, [current?.stage_name]);
+  // Steps named quotation / invoice / receipt always open the built-in finance
+  // form instead of the generic dynamic field form.
+  const financeForm = useMemo(
+    () => detectFinanceForm(current?.stage_name),
+    [current?.stage_name],
+  );
+
 
 
   // Load stage form state + its custom fields

@@ -127,6 +127,8 @@ export default function ExternalDocDialog({ open, onOpenChange, doc, preset, job
                   <SelectItem value="quote">Quote</SelectItem>
                   <SelectItem value="invoice">Invoice</SelectItem>
                   <SelectItem value="receipt">Receipt / payment</SelectItem>
+                  <SelectItem value="credit_note">Credit note (to client)</SelectItem>
+                  <SelectItem value="supplier_credit">Supplier credit</SelectItem>
                 </SelectContent>
               </Select>
             </div>

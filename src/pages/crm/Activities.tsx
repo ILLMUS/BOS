@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ACTIVITY_TYPE_LABELS, formatDate, type Activity } from "@/lib/crm";
+import { ACTIVITY_TYPE_LABELS, formatDateTime, type Activity } from "@/lib/crm";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
 export default function Activities() {
@@ -43,7 +43,7 @@ export default function Activities() {
             </div>
             {a.body && <p className="mt-1 text-sm text-muted-foreground">{a.body}</p>}
             <p className="mt-1 text-xs text-muted-foreground">
-              {a.due_at ? `Due ${formatDate(a.due_at)}` : `Logged ${formatDate(a.created_at)}`}
+              {a.due_at ? `Due ${formatDateTime(a.due_at)}` : `Logged ${formatDateTime(a.created_at)}`}
             </p>
           </div>
           {!a.completed_at && (

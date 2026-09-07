@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ActivityPanel from "@/components/crm/ActivityPanel";
-import { formatDate } from "@/lib/crm";
+import { formatDateTime } from "@/lib/crm";
 import type { Client360Data } from "@/hooks/useClient360";
 
 interface Props extends Pick<Client360Data, "audit" | "jobs"> { accountId: string }
@@ -18,7 +18,7 @@ export default function HistoryTab({ audit, jobs, accountId }: Props) {
           {audit.length ? audit.map((a) => (
             <div key={a.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2 last:border-0">
               <span>{jobNumber(a.job_id)} · {a.action.replace(/_/g, " ")}</span>
-              <span className="text-xs text-muted-foreground">{formatDate(a.created_at)}</span>
+              <span className="text-xs text-muted-foreground">{formatDateTime(a.created_at)}</span>
             </div>
           )) : <p className="text-muted-foreground">No audit entries.</p>}
         </CardContent>

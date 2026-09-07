@@ -1,14 +1,5 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-
-import {
-  NavLink,
-  useLocation,
-  useNavigate,
-} from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -17,21 +8,10 @@ import {
   AUTHORITY_LABELS,
 } from "@/lib/authority";
 
-import {
-  supabase,
-} from "@/integrations/supabase/client";
-
-import {
-  cn,
-} from "@/lib/utils";
-
-import {
-  NAV_SECTIONS,
-} from "@/lib/modules";
-
-import {
-  ROLE_LABELS,
-} from "@/lib/constants";
+import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
+import { NAV_SECTIONS } from "@/lib/modules";
+import { ROLE_LABELS } from "@/lib/constants";
 
 import {
   BarChart3,
@@ -47,7 +27,6 @@ import {
   Wallet,
   Workflow,
 } from "lucide-react";
-
 
 /* ============================================================
    TYPES
@@ -65,25 +44,26 @@ type Counts = Record<
   number
 >;
 
-
 /* ============================================================
-   SIDEBAR DIMENSIONS
+   DIMENSIONS
+
+   Desktop:
 
    Sidebar 1 = 72px
 
    Sidebar 2 = 270px
 
-   Both open = 342px
+   Total when Sidebar 2 is open:
+
+   72px + 270px = 342px
 ============================================================ */
 
 const SIDEBAR_ONE_WIDTH = 72;
-
 const SIDEBAR_TWO_WIDTH = 270;
 
-const TOTAL_SIDEBAR_WIDTH =
+const SIDEBAR_TOTAL_WIDTH =
   SIDEBAR_ONE_WIDTH +
   SIDEBAR_TWO_WIDTH;
-
 
 /* ============================================================
    PRIMARY SECTION ICONS
@@ -119,7 +99,6 @@ const SECTION_ICONS: Record<
   ADMINISTRATION:
     ShieldCheck,
 };
-
 
 /* ============================================================
    SECTION DESCRIPTIONS
@@ -161,7 +140,6 @@ function getSectionDescription(
   }
 }
 
-
 /* ============================================================
    APP SIDEBAR
 ============================================================ */
@@ -169,8 +147,6 @@ function getSectionDescription(
 export default function AppSidebar({
   open,
   onClose,
-  collapsed: _collapsed,
-  onToggleCollapse: _onToggleCollapse,
 }: AppSidebarProps) {
 
   /* ==========================================================
@@ -186,33 +162,25 @@ export default function AppSidebar({
     authority,
   } = useAuth();
 
-
   /* ==========================================================
      ROUTER
   ========================================================== */
 
-  const {
-    pathname,
-  } = useLocation();
+  const { pathname } =
+    useLocation();
 
   const navigate =
     useNavigate();
 
-
   /* ==========================================================
      SIDEBAR 1 HOVER
 
-     Sidebar 1 normally stays at 72px.
+     IMPORTANT:
 
-     On hover:
+     This is ONLY used visually on desktop.
 
-     72px → 256px
-
-     This expansion overlays Sidebar 2.
-
-     It NEVER pushes Sidebar 2.
-
-     It NEVER pushes the page.
+     Mobile and tablet DO NOT expand
+     Sidebar 1 on hover.
   ========================================================== */
 
   const [
@@ -220,19 +188,10 @@ export default function AppSidebar({
     setSidebarOneHovered,
   ] = useState(false);
 
-
   /* ==========================================================
-     SIDEBAR 2 SELECTION
+     SIDEBAR 2
 
-     No selected section:
-
-     Page starts at 72px.
-
-     Selected section:
-
-     Sidebar 2 opens.
-
-     Page starts at 342px.
+     Selected primary navigation section.
   ========================================================== */
 
   const [
@@ -241,7 +200,6 @@ export default function AppSidebar({
   ] = useState<string | null>(
     null,
   );
-
 
   /* ==========================================================
      COUNTS
@@ -252,11 +210,13 @@ export default function AppSidebar({
     setCounts,
   ] = useState<Counts>({
     jobs: 0,
+
     approvals: 0,
+
     assignments: 0,
+
     overdue: 0,
   });
-
 
   /* ==========================================================
      VISIBLE NAVIGATION
@@ -265,8 +225,11 @@ export default function AppSidebar({
   const visibleSections =
     useMemo(() => {
 
-      return NAV_SECTIONS
-        .map((section, index) => {
+      return NAV_SECTIONS.map(
+        (
+          section,
+          index,
+        ) => {
 
           const sectionKey =
             section.label ??
@@ -285,24 +248,24 @@ export default function AppSidebar({
 
           return {
             ...section,
+
             sectionKey,
+
             items,
           };
-
-        })
-        .filter(
-          (section) =>
-            section.items.length > 0,
-        );
+        },
+      ).filter(
+        (section) =>
+          section.items.length > 0,
+      );
 
     }, [
       authority,
       isAdmin,
     ]);
 
-
   /* ==========================================================
-     ACTIVE SECTION
+     ACTIVE SECTIONS
   ========================================================== */
 
   const activeSectionKeys =
@@ -319,10 +282,12 @@ export default function AppSidebar({
               (item) => {
 
                 if (item.end) {
+
                   return (
                     pathname ===
                     item.to
                   );
+
                 }
 
                 return (
@@ -337,9 +302,11 @@ export default function AppSidebar({
             );
 
           if (sectionIsActive) {
+
             active.add(
               section.sectionKey,
             );
+
           }
 
         },
@@ -351,7 +318,6 @@ export default function AppSidebar({
       pathname,
       visibleSections,
     ]);
-
 
   /* ==========================================================
      VALIDATE SELECTED SECTION
@@ -367,9 +333,11 @@ export default function AppSidebar({
           selectedSectionKey,
       )
     ) {
+
       setSelectedSectionKey(
         null,
       );
+
     }
 
   }, [
@@ -377,65 +345,49 @@ export default function AppSidebar({
     visibleSections,
   ]);
 
-
   /* ==========================================================
-     COUNTERS
+     LOAD COUNTS
+
+     IMPORTANT FIX:
+
+     Supabase errors will NOT break
+     the sidebar or render.
+
+     401 errors simply result in
+     count = 0.
   ========================================================== */
 
   useEffect(() => {
 
-    let cancelled =
-      false;
-
+    let cancelled = false;
 
     const loadCounts =
       async () => {
 
-        const [
-          jobsRes,
-          approvalsRes,
-          assignmentsRes,
-          slaRes,
-        ] = await Promise.all([
+        try {
 
-          /* JOBS */
+          const [
+            jobsRes,
+            approvalsRes,
+            assignmentsRes,
+            slaRes,
+          ] =
+            await Promise.all([
+              supabase
+                .from("jobs")
+                .select(
+                  "id",
+                  {
+                    count: "exact",
+                    head: true,
+                  },
+                )
+                .eq(
+                  "status",
+                  "active",
+                ),
 
-          supabase
-            .from("jobs")
-            .select(
-              "id",
-              {
-                count: "exact",
-                head: true,
-              },
-            )
-            .eq(
-              "status",
-              "active",
-            ),
-
-
-          /* APPROVALS */
-
-          supabase
-            .from("job_stages")
-            .select(
-              "id",
-              {
-                count: "exact",
-                head: true,
-              },
-            )
-            .eq(
-              "status",
-              "pending_approval",
-            ),
-
-
-          /* ASSIGNMENTS */
-
-          user
-            ? supabase
+              supabase
                 .from("job_stages")
                 .select(
                   "id",
@@ -444,98 +396,166 @@ export default function AppSidebar({
                     head: true,
                   },
                 )
-                .in(
+                .eq(
                   "status",
-                  [
-                    "active",
-                    "pending_approval",
-                  ],
+                  "pending_approval",
+                ),
+
+              user
+                ? supabase
+                    .from(
+                      "job_stages",
+                    )
+                    .select(
+                      "id",
+                      {
+                        count:
+                          "exact",
+
+                        head: true,
+                      },
+                    )
+                    .in(
+                      "status",
+                      [
+                        "active",
+
+                        "pending_approval",
+                      ],
+                    )
+                    .or(
+                      `primary_owner_id.eq.${user.id},secondary_owner_id.eq.${user.id}`,
+                    )
+
+                : Promise.resolve({
+                    count: 0,
+
+                    data: [],
+                  }),
+
+              supabase
+                .from(
+                  "job_stages",
                 )
-                .or(
-                  `primary_owner_id.eq.${user.id},secondary_owner_id.eq.${user.id}`,
+                .select(
+                  "sla_started_at, sla_deadline_hours",
                 )
+                .eq(
+                  "status",
+                  "active",
+                )
+                .not(
+                  "sla_started_at",
+                  "is",
+                  null,
+                )
+                .not(
+                  "sla_deadline_hours",
+                  "is",
+                  null,
+                ),
+            ]);
 
-            : Promise.resolve({
-                count: 0,
-              } as any),
+          /*
+            If Supabase is unauthorized,
+            safely use empty data.
+          */
 
+          const slaData =
+            slaRes?.data ?? [];
 
-          /* SLA */
+          const now =
+            Date.now();
 
-          supabase
-            .from("job_stages")
-            .select(
-              "sla_started_at, sla_deadline_hours",
-            )
-            .eq(
-              "status",
-              "active",
-            )
-            .not(
-              "sla_started_at",
-              "is",
-              null,
-            )
-            .not(
-              "sla_deadline_hours",
-              "is",
-              null,
-            ),
+          const overdue =
+            slaData.filter(
+              (stage: any) => {
 
-        ]);
+                if (
+                  !stage.sla_started_at ||
+                  !stage.sla_deadline_hours
+                ) {
+                  return false;
+                }
 
+                const startTime =
+                  new Date(
+                    stage.sla_started_at,
+                  ).getTime();
 
-        const now =
-          Date.now();
+                const deadline =
+                  startTime +
+                  Number(
+                    stage.sla_deadline_hours,
+                  ) *
+                    3600_000;
 
+                return (
+                  now >
+                  deadline
+                );
 
-        const overdue =
-          (
-            (
-              slaRes as any
-            ).data || []
-          ).filter(
-            (stage: any) =>
-              now >
-              new Date(
-                stage.sla_started_at,
-              ).getTime() +
-                stage.sla_deadline_hours *
-                  3600_000,
-          ).length;
+              },
+            ).length;
 
+          if (!cancelled) {
 
-        if (!cancelled) {
+            setCounts({
+              jobs:
+                jobsRes?.count ??
+                0,
 
-          setCounts({
+              approvals:
+                approvalsRes?.count ??
+                0,
 
-            jobs:
-              jobsRes.count ?? 0,
+              assignments:
+                assignmentsRes?.count ??
+                0,
 
-            approvals:
-              approvalsRes.count ?? 0,
+              overdue,
+            });
 
-            assignments:
-              (
-                assignmentsRes as any
-              ).count ?? 0,
+          }
 
-            overdue,
+        } catch (error) {
 
-          });
+          /*
+            IMPORTANT:
+
+            Do not allow a failed
+            Supabase request to break
+            the entire UI.
+          */
+
+          console.warn(
+            "Unable to load sidebar counts:",
+            error,
+          );
+
+          if (!cancelled) {
+
+            setCounts({
+              jobs: 0,
+
+              approvals: 0,
+
+              assignments: 0,
+
+              overdue: 0,
+            });
+
+          }
 
         }
 
       };
 
-
     loadCounts();
-
 
     return () => {
 
-      cancelled =
-        true;
+      cancelled = true;
 
     };
 
@@ -543,28 +563,23 @@ export default function AppSidebar({
     user,
   ]);
 
-
   /* ==========================================================
      USER INITIALS
   ========================================================== */
 
   const initials =
-    (
-      profile?.full_name ||
-      "U"
-    )
+    (profile?.full_name || "U")
       .split(" ")
       .map(
         (part) =>
-          part[0],
+          part.charAt(0),
       )
       .slice(0, 2)
       .join("")
       .toUpperCase();
 
-
   /* ==========================================================
-     SELECTED SIDEBAR 2 SECTION
+     SELECTED SECTION
   ========================================================== */
 
   const selectedSection =
@@ -572,95 +587,66 @@ export default function AppSidebar({
       (section) =>
         section.sectionKey ===
         selectedSectionKey,
-    );
-
-
-  /* ==========================================================
-     SIDEBAR 2 OPEN STATE
-  ========================================================== */
-
-  const sidebarTwoOpen =
-    Boolean(
-      selectedSection,
-    );
-
+    ) ?? null;
 
   /* ==========================================================
-     PAGE OFFSET
-
-     Sidebar 2 CLOSED:
-
-     Page starts after Sidebar 1.
-
-     72px
-
-
-     Sidebar 2 OPEN:
-
-     Page starts after Sidebar 1
-     + Sidebar 2.
-
-     72 + 270 = 342px
+     PRIMARY SECTION CLICK
   ========================================================== */
 
-  const pageOffset =
-    sidebarTwoOpen
-      ? TOTAL_SIDEBAR_WIDTH
-      : SIDEBAR_ONE_WIDTH;
+  const handleMainSectionClick =
+    (
+      sectionKey: string,
+    ) => {
 
+      setSelectedSectionKey(
+        (current) =>
 
-  /* ==========================================================
-     MAIN SECTION CLICK
+          current === sectionKey
+            ? null
+            : sectionKey,
+      );
 
-     Clicking a main section:
-
-     • Opens Sidebar 2.
-
-     Clicking the same section:
-
-     • Closes Sidebar 2.
-
-     The page automatically moves:
-
-     72px ↔ 342px
-  ========================================================== */
-
-  const handleMainSectionClick = (
-    sectionKey: string,
-  ) => {
-
-    setSelectedSectionKey(
-      (current) =>
-
-        current === sectionKey
-          ? null
-          : sectionKey,
-
-    );
-
-  };
-
+    };
 
   /* ==========================================================
      SUB NAVIGATION CLICK
-
-     • Navigate to page.
-     • Sidebar 2 remains open.
-     • Sidebar 1 collapses.
   ========================================================== */
 
-  const handleSubNavigationClick = (
-    to: string,
-  ) => {
+  const handleSubNavigationClick =
+    (
+      to: string,
+    ) => {
 
-    setSidebarOneHovered(
-      false,
-    );
+      setSidebarOneHovered(
+        false,
+      );
 
-    navigate(to);
+      navigate(to);
 
-  };
+      /*
+        On mobile/tablet,
+        close the drawer.
 
+        Desktop is unaffected
+        because the parent
+        layout controls it.
+      */
+
+      onClose();
+
+    };
+
+  /* ==========================================================
+     SIDEBAR 1 WIDTH
+
+     Hover expansion is applied
+     ONLY at xl breakpoint.
+  ========================================================== */
+
+  const sidebarOneWidthClass =
+    sidebarOneHovered
+      ? "xl:w-64"
+      : "xl:w-[72px]";
 
   /* ==========================================================
      RENDER
@@ -669,160 +655,194 @@ export default function AppSidebar({
   return (
     <>
 
-      {/* ====================================================
-          PAGE SPACER
+      {/* ======================================================
+          MOBILE + TABLET BACKDROP
 
-          THIS IS THE IMPORTANT PART.
-
-          The spacer takes up real layout space.
-
-          CLOSED:
-          72px
-
-          OPEN:
-          342px
-
-          This pushes the page content.
-
-          Sidebar 1 and Sidebar 2 themselves
-          remain fixed.
-
-          IMPORTANT:
-
-          Your application layout should use:
-
-          <div className="flex min-h-screen">
-            <AppSidebar />
-            <main className="flex-1">
-              ...
-            </main>
-          </div>
-      ==================================================== */}
-
-      <div
-        className={cn(
-
-          "hidden lg:block",
-
-          "h-screen shrink-0",
-
-          "transition-[width] duration-300 ease-out",
-
-        )}
-        style={{
-          width: `${pageOffset}px`,
-        }}
-        aria-hidden="true"
-      />
-
-
-      {/* ====================================================
-          MOBILE BACKDROP
-      ==================================================== */}
+          Hidden on desktop.
+      ====================================================== */}
 
       {open && (
 
         <div
           className="
-            fixed inset-0 z-40
+            fixed
+            inset-0
+            z-40
+
             bg-foreground/30
+
             backdrop-blur-[2px]
-            lg:hidden
+
+            xl:hidden
           "
           onClick={onClose}
         />
 
       )}
 
+      {/* ======================================================
+          SIDEBAR CONTAINER
 
-      {/* ====================================================
-          FIXED SIDEBAR SYSTEM
+          MOBILE + TABLET:
 
-          The actual sidebars are fixed.
+          Fixed overlay.
 
-          The spacer above reserves the space
-          for the page.
+          Width:
+          342px
 
-          Therefore:
+          DESKTOP:
 
-          Sidebar 1 hover expansion
-          DOES NOT affect page position.
+          Participates in flex layout.
 
-          Sidebar 2 selection
-          DOES affect page position.
-      ==================================================== */}
+          Initial:
+          72px
+
+          Sidebar 2 open:
+          342px
+
+          This is what pushes
+          page content.
+      ====================================================== */}
 
       <div
         className={cn(
 
-          "fixed left-0 top-0 z-50",
+          /*
+            MOBILE + TABLET
+          */
 
-          "h-full",
+          "fixed",
+          "left-0",
+          "top-0",
+          "z-50",
+
+          "h-screen",
+
+          "w-[342px]",
+
+          "max-w-[90vw]",
 
           "transition-transform",
           "duration-300",
           "ease-out",
 
-          "lg:translate-x-0",
-
           open
             ? "translate-x-0"
             : "-translate-x-full",
 
+
+          /*
+            DESKTOP
+          */
+
+          "xl:relative",
+
+          "xl:left-auto",
+
+          "xl:top-auto",
+
+          "xl:z-auto",
+
+          "xl:h-screen",
+
+          "xl:max-w-none",
+
+          "xl:translate-x-0",
+
+          "xl:shrink-0",
+
+          "xl:transition-[width]",
+
+          "xl:duration-300",
+
+          "xl:ease-out",
+
+
+          /*
+            DESKTOP WIDTH
+
+            Sidebar 2 closed:
+
+            72px
+
+            Sidebar 2 open:
+
+            342px
+          */
+
+          selectedSection
+            ? "xl:w-[342px]"
+            : "xl:w-[72px]",
         )}
       >
 
-
-        {/* ==================================================
+        {/* ====================================================
             SIDEBAR 1
-        ================================================== */}
+        ==================================================== */}
 
         <aside
           className={cn(
 
-            /*
-             Sidebar 1 is above Sidebar 2.
+            "absolute",
+            "left-0",
+            "top-0",
 
-             z-[70]
-            */
+            "z-[70]",
 
-            "absolute left-0 top-0 z-[70]",
+            "flex",
+            "h-full",
 
-            "flex h-full flex-col",
+            "flex-col",
 
             "overflow-hidden",
 
-            "bg-sidebar",
-            "text-sidebar-foreground",
-
             "border-r",
+
             "border-sidebar-border",
+
+            "bg-sidebar",
+
+            "text-sidebar-foreground",
 
             "shadow-[8px_0_30px_rgba(0,0,0,0.15)]",
 
 
             /*
-             Normal:
+              MOBILE + TABLET
 
-             72px
+              Always 72px.
 
-             Hover:
-
-             256px
-
-             This overlays Sidebar 2.
+              NO hover expansion.
             */
 
-            sidebarOneHovered
-              ? "w-64"
-              : "w-[72px]",
+            "w-[72px]",
 
 
-            "transition-[width]",
-            "duration-300",
-            "ease-out",
+            /*
+              DESKTOP
 
+              Hover expansion.
+            */
+
+            sidebarOneWidthClass,
+
+            "xl:transition-[width]",
+
+            "xl:duration-300",
+
+            "xl:ease-out",
           )}
+
+
+          /*
+            IMPORTANT:
+
+            Hover is desktop only.
+
+            We still listen for events,
+            but only apply expansion
+            using xl classes.
+          */
 
           onMouseEnter={() =>
             setSidebarOneHovered(
@@ -837,15 +857,19 @@ export default function AppSidebar({
           }
         >
 
-
-          {/* ================================================
+          {/* ==================================================
               BACKGROUND EFFECT
-          ================================================ */}
+          ================================================== */}
 
           <div
             className="
               pointer-events-none
-              absolute inset-0 z-0
+
+              absolute
+              inset-0
+
+              z-0
+
               opacity-60
             "
             style={{
@@ -856,29 +880,54 @@ export default function AppSidebar({
           />
 
 
-          {/* ================================================
+          {/* ==================================================
               BRAND
-          ================================================ */}
+          ================================================== */}
 
           <div
             className={cn(
 
-              "relative z-10",
+              "relative",
+              "z-10",
 
-              "flex h-16 shrink-0 items-center",
+              "flex",
+
+              "h-16",
+
+              "shrink-0",
+
+              "items-center",
 
 
-              sidebarOneHovered
-                ? "gap-2.5 px-4"
-                : "justify-center px-0",
+              /*
+                Mobile / tablet
+              */
 
+              "justify-center",
+
+              "px-0",
+
+
+              /*
+                Desktop hover
+              */
+
+              sidebarOneHovered &&
+                "xl:justify-start xl:gap-2.5 xl:px-4",
             )}
           >
 
             <div
               className="
-                flex h-9 w-9 shrink-0
-                items-center justify-center
+                flex
+
+                h-9
+                w-9
+
+                shrink-0
+
+                items-center
+                justify-center
 
                 rounded-xl
 
@@ -899,19 +948,20 @@ export default function AppSidebar({
             </div>
 
 
+            {/* Desktop only expanded brand */}
+
             <div
               className={cn(
 
-                "min-w-0 overflow-hidden",
+                "hidden",
 
-                "transition-all",
-                "duration-200",
+                "min-w-0",
+
+                "overflow-hidden",
 
 
-                sidebarOneHovered
-                  ? "max-w-[180px] opacity-100"
-                  : "max-w-0 opacity-0",
-
+                sidebarOneHovered &&
+                  "xl:block",
               )}
             >
 
@@ -920,7 +970,9 @@ export default function AppSidebar({
                   truncate
 
                   font-heading
+
                   text-[15px]
+
                   font-extrabold
 
                   tracking-tight
@@ -934,12 +986,12 @@ export default function AppSidebar({
                 }
               </p>
 
-
               <p
                 className="
                   truncate
 
                   text-[10px]
+
                   font-medium
 
                   uppercase
@@ -957,368 +1009,326 @@ export default function AppSidebar({
           </div>
 
 
-          {/* ================================================
+          {/* ==================================================
               PRIMARY NAVIGATION
-          ================================================ */}
+          ================================================== */}
 
           <nav
             className="
               thin-scroll
 
-              relative z-10
+              relative
+              z-10
 
               flex-1
 
               overflow-y-auto
 
-              px-3 py-4
+              px-3
+              py-4
             "
           >
 
-            <div
-              className="
-                space-y-1.5
-              "
-            >
+            <div className="space-y-1.5">
 
-              {
-                visibleSections.map(
-                  (
-                    section,
-                    index,
-                  ) => {
+              {visibleSections.map(
+                (
+                  section,
+                  index,
+                ) => {
 
-
-                    /* ======================================
-                        ICON
-                    ====================================== */
-
-                    const SectionIcon =
-
-                      SECTION_ICONS[
-                        section.label ?? ""
-                      ]
-
-                      ??
-
-                      [
-                        LayoutDashboard,
-                        Megaphone,
-                        Handshake,
-                        Workflow,
-                        Wallet,
-                        Users,
-                        Share2,
-                        BarChart3,
-                        ShieldCheck,
-                      ][index]
-
-                      ??
-
-                      Boxes;
+                  const SectionIcon =
+                    SECTION_ICONS[
+                      section.label ??
+                      ""
+                    ] ??
+                    [
+                      LayoutDashboard,
+                      Megaphone,
+                      Handshake,
+                      Workflow,
+                      Wallet,
+                      Users,
+                      Share2,
+                      BarChart3,
+                      ShieldCheck,
+                    ][index] ??
+                    Boxes;
 
 
-                    /* ======================================
-                        ACTIVE
-                    ====================================== */
-
-                    const isActive =
-
-                      activeSectionKeys.has(
-                        section.sectionKey,
-                      );
+                  const isActive =
+                    activeSectionKeys.has(
+                      section.sectionKey,
+                    );
 
 
-                    /* ======================================
-                        SELECTED
-                    ====================================== */
-
-                    const isSelected =
-
-                      selectedSectionKey ===
-                      section.sectionKey;
+                  const isSelected =
+                    selectedSectionKey ===
+                    section.sectionKey;
 
 
-                    /* ======================================
-                        COUNTS
-                    ====================================== */
-
-                    const totalCount =
-
-                      section.items.reduce(
-
+                  const totalCount =
+                    section.items.reduce(
+                      (
+                        sum,
+                        item,
+                      ) =>
+                        sum +
                         (
-                          sum,
-                          item,
-                        ) =>
+                          item.count
+                            ? counts[
+                                item.count
+                              ]
+                            : 0
+                        ),
 
-                          sum +
-
-                          (
-                            item.count
-                              ? counts[item.count]
-                              : 0
-                          ),
-
-                        0,
-
-                      );
+                      0,
+                    );
 
 
-                    return (
+                  return (
 
-                      <button
+                    <button
+                      key={
+                        section.sectionKey
+                      }
 
-                        key={
-                          section.sectionKey
-                        }
+                      type="button"
 
-                        type="button"
+                      onClick={() =>
+                        handleMainSectionClick(
+                          section.sectionKey,
+                        )
+                      }
 
-                        onClick={() =>
-                          handleMainSectionClick(
-                            section.sectionKey,
-                          )
-                        }
+                      className={cn(
 
+                        "group",
+
+                        "relative",
+
+                        "flex",
+
+                        "w-full",
+
+                        "items-center",
+
+                        "rounded-xl",
+
+
+                        /*
+                          Default mobile/tablet
+                        */
+
+                        "justify-center",
+
+                        "px-0",
+
+                        "py-3",
+
+
+                        /*
+                          Desktop
+                        */
+
+                        "xl:transition-all",
+
+                        "xl:duration-200",
+
+
+                        sidebarOneHovered &&
+                          "xl:justify-start xl:gap-3 xl:px-3 xl:py-2.5",
+
+
+                        isSelected
+
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
+
+                          : isActive
+
+                            ? "bg-sidebar-accent text-white"
+
+                            : "text-sidebar-foreground/65 hover:bg-sidebar-accent/80 hover:text-white",
+                      )}
+
+                      aria-label={
+                        section.label ??
+                        "Navigation"
+                      }
+
+                      aria-expanded={
+                        isSelected
+                      }
+
+                      title={
+                        section.label
+                      }
+                    >
+
+                      {/* Active indicator */}
+
+                      <span
                         className={cn(
 
-                          "group",
+                          "absolute",
 
-                          "relative",
+                          "left-0",
 
-                          "flex w-full",
+                          "top-1/2",
 
-                          "items-center",
-                          "gap-0",
+                          "h-5",
 
-                          "rounded-xl",
+                          "w-[3px]",
 
-                          "transition-all",
+                          "-translate-y-1/2",
 
-                          "duration-200",
-
-
-                          sidebarOneHovered
-                            ? "gap-3 px-3 py-2.5"
-                            : "justify-center px-0 py-3",
+                          "rounded-r-full",
 
 
                           isSelected
 
-                            ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm pl-3"
+                            ? "bg-sidebar-primary-foreground opacity-100"
 
                             : isActive
 
-                              ? "bg-sidebar-accent text-white"
+                              ? "bg-sidebar-primary opacity-100"
 
-                              : "text-sidebar-foreground/65 hover:bg-sidebar-accent/80 hover:text-white",
+                              : "opacity-0",
+                        )}
+                      />
+
+
+                      {/* Icon */}
+
+                      <SectionIcon
+                        className="
+                          h-[18px]
+
+                          w-[18px]
+
+                          shrink-0
+
+                          xl:transition-transform
+
+                          xl:duration-200
+
+                          xl:group-hover:scale-105
+                        "
+                        strokeWidth={1.9}
+                      />
+
+
+                      {/* Label */}
+
+                      <span
+                        className={cn(
+
+                          "hidden",
+
+                          "min-w-0",
+
+                          "flex-1",
+
+                          "truncate",
+
+                          "text-left",
+
+                          "text-[12px]",
+
+                          "font-semibold",
+
+                          "uppercase",
+
+                          "tracking-[0.055em]",
+
+
+                          sidebarOneHovered &&
+                            "xl:block",
+                        )}
+                      >
+                        {
+                          section.label
+                        }
+                      </span>
+
+
+                      {/* Count */}
+
+                      {sidebarOneHovered &&
+                        totalCount > 0 && (
+
+                          <span
+                            className="
+                              hidden
+
+                              xl:block
+
+                              rounded-full
+
+                              px-1.5
+                              py-0.5
+
+                              text-[10px]
+                              font-bold
+
+                              bg-sidebar-primary/20
+
+                              text-sidebar-primary-foreground
+                            "
+                          >
+                            {
+                              totalCount
+                            }
+                          </span>
 
                         )}
 
-                        aria-label={
-                          section.label ??
-                          "Navigation"
-                        }
 
-                        aria-expanded={
-                          isSelected
-                        }
+                      {/* Arrow */}
 
-                        title={
-                          !sidebarOneHovered
-                            ? section.label
-                            : undefined
-                        }
-                      >
+                      {sidebarOneHovered && (
 
-
-                        {/* ACTIVE INDICATOR */}
-
-                        <span
-                          className={cn(
-
-                            "absolute",
-
-                            "left-0",
-
-                            "top-1/2",
-
-                            "h-5",
-
-                            "w-[3px]",
-
-                            "-translate-y-1/2",
-
-                            "rounded-r-full",
-
-                            "transition-opacity",
-
-                            "duration-200",
-
-
-                            isSelected
-
-                              ? "bg-sidebar-primary-foreground opacity-100"
-
-                              : isActive
-
-                                ? "bg-sidebar-primary opacity-100"
-
-                                : "opacity-0",
-
-                          )}
-                        />
-
-
-                        {/* ICON */}
-
-                        <SectionIcon
+                        <ChevronRight
                           className="
-                            h-[18px]
-                            w-[18px]
+                            hidden
+
+                            xl:block
+
+                            h-3.5
+                            w-3.5
 
                             shrink-0
 
-                            transition-transform
-                            duration-200
-
-                            group-hover:scale-105
+                            opacity-40
                           "
-                          strokeWidth={1.9}
+                          strokeWidth={2}
                         />
 
+                      )}
 
-                        {/* LABEL */}
+                    </button>
 
-                        <span
-                          className={cn(
+                  );
 
-                            "min-w-0",
-
-                            "flex-1",
-
-                            "truncate",
-
-                            "text-left",
-
-                            "text-[12px]",
-
-                            "font-semibold",
-
-                            "uppercase",
-
-                            "tracking-[0.055em]",
-
-                            "transition-all",
-
-                            "duration-200",
-
-
-                            sidebarOneHovered
-
-                              ? "translate-x-0 opacity-100"
-
-                              : "-translate-x-2 opacity-0",
-
-                          )}
-                        >
-                          {
-                            section.label
-                          }
-                        </span>
-
-
-                        {/* COUNTS */}
-
-                        {
-                          sidebarOneHovered &&
-                          totalCount > 0 && (
-
-                            <span
-                              className={cn(
-
-                                "rounded-full",
-
-                                "px-1.5 py-0.5",
-
-                                "text-[10px]",
-
-                                "font-bold",
-
-
-                                isSelected
-
-                                  ? "bg-white/15 text-white"
-
-                                  : "bg-sidebar-primary/20 text-sidebar-primary-foreground",
-
-                              )}
-                            >
-                              {
-                                totalCount
-                              }
-                            </span>
-
-                          )
-                        }
-
-
-                        {/* ARROW */}
-
-                        {
-                          sidebarOneHovered && (
-
-                            <ChevronRight
-                              className={cn(
-
-                                "h-3.5",
-
-                                "w-3.5",
-
-                                "shrink-0",
-
-                                "transition-transform",
-
-                                "duration-200",
-
-
-                                isSelected
-
-                                  ? "translate-x-0.5"
-
-                                  : "opacity-40 group-hover:opacity-100",
-
-                              )}
-
-                              strokeWidth={2}
-                            />
-
-                          )
-                        }
-
-                      </button>
-
-                    );
-
-                  },
-                )
-              }
+                },
+              )}
 
             </div>
 
           </nav>
 
 
-          {/* ================================================
-              USER
-          ================================================ */}
+          {/* ==================================================
+              USER PROFILE
+          ================================================== */}
 
           <button
             type="button"
 
             onClick={() =>
-              navigate("/settings")
+              navigate(
+                "/settings",
+              )
             }
 
             title="Edit your profile"
@@ -1327,9 +1337,13 @@ export default function AppSidebar({
 
             className={cn(
 
-              "relative z-10",
+              "relative",
 
-              "flex w-full",
+              "z-10",
+
+              "flex",
+
+              "w-full",
 
               "shrink-0",
 
@@ -1339,31 +1353,39 @@ export default function AppSidebar({
 
               "border-sidebar-border",
 
-              "transition-colors",
-
               "hover:bg-sidebar-accent/50",
 
 
-              sidebarOneHovered
-                ? "gap-3 px-3 py-3"
-                : "justify-center px-0 py-3",
+              /*
+                Default
+              */
 
+              "justify-center",
+
+              "px-0",
+
+              "py-3",
+
+
+              /*
+                Desktop hover
+              */
+
+              sidebarOneHovered &&
+                "xl:justify-start xl:gap-3 xl:px-3",
             )}
           >
-
-
-            {/* AVATAR */}
 
             <div
               className="
                 flex
 
-                h-9 w-9
+                h-9
+                w-9
 
                 shrink-0
 
                 items-center
-
                 justify-center
 
                 rounded-full
@@ -1377,14 +1399,16 @@ export default function AppSidebar({
                 shadow-sm
               "
             >
-              {initials}
+              {
+                initials
+              }
             </div>
 
 
-            {/* USER INFORMATION */}
-
             <div
               className={cn(
+
+                "hidden",
 
                 "min-w-0",
 
@@ -1394,17 +1418,9 @@ export default function AppSidebar({
 
                 "text-left",
 
-                "transition-all",
 
-                "duration-200",
-
-
-                sidebarOneHovered
-
-                  ? "max-w-[170px] opacity-100"
-
-                  : "max-w-0 opacity-0",
-
+                sidebarOneHovered &&
+                  "xl:block",
               )}
             >
 
@@ -1435,7 +1451,6 @@ export default function AppSidebar({
                   text-sidebar-foreground/45
                 "
               >
-
                 {
                   AUTHORITY_LABELS[
                     authority
@@ -1444,52 +1459,45 @@ export default function AppSidebar({
 
                 {
                   roles.length > 0
-                    ? ` · ${ROLE_LABELS[
-                        roles[0]
-                      ]}`
+                    ? ` · ${
+                        ROLE_LABELS[
+                          roles[0]
+                        ]
+                      }`
                     : ""
                 }
-
               </p>
 
             </div>
 
 
-            {
-              sidebarOneHovered && (
+            {sidebarOneHovered && (
 
-                <MoreVertical
-                  className="
-                    h-4 w-4
+              <MoreVertical
+                className="
+                  hidden
 
-                    shrink-0
+                  xl:block
 
-                    text-sidebar-foreground/30
-                  "
-                />
+                  h-4
+                  w-4
 
-              )
-            }
+                  shrink-0
+
+                  text-sidebar-foreground/30
+                "
+              />
+
+            )}
 
           </button>
 
         </aside>
 
 
-        {/* ==================================================
+        {/* ====================================================
             SIDEBAR 2
-
-            Always positioned after the
-            72px Sidebar 1.
-
-            It does NOT move when Sidebar 1
-            expands.
-
-            Sidebar 1 overlays it because:
-
-            Sidebar 1 = z-[70]
-            Sidebar 2 = z-[60]
-        ================================================== */}
+        ==================================================== */}
 
         <aside
           className={cn(
@@ -1521,454 +1529,414 @@ export default function AppSidebar({
             "shadow-[12px_0_35px_rgba(0,0,0,0.08)]",
 
 
-            "transition-[opacity,transform]",
+            /*
+              Animation ONLY desktop
+            */
 
-            "duration-300",
+            "xl:transition-[opacity,transform]",
 
-            "ease-out",
+            "xl:duration-300",
+
+            "xl:ease-out",
 
 
-            sidebarTwoOpen
+            selectedSection
 
               ? "translate-x-0 opacity-100"
 
               : "pointer-events-none -translate-x-2 opacity-0",
-
           )}
         >
 
+          {selectedSection && (
 
-          {
-            selectedSection && (
+            <div
+              className="
+                flex
+
+                h-full
+
+                flex-col
+              "
+            >
+
+
+              {/* ==============================================
+                  SIDEBAR 2 HEADER
+              ============================================== */}
 
               <div
                 className="
-                  flex h-full flex-col
+                  relative
+
+                  shrink-0
+
+                  border-b
+
+                  border-sidebar-border
+
+                  px-5
+
+                  pb-4
+
+                  pt-6
                 "
               >
 
-
-                {/* ==========================================
-                    SIDEBAR 2 HEADER
-                ========================================== */}
-
                 <div
                   className="
-                    relative
+                    mb-1
 
-                    shrink-0
+                    flex
 
-                    border-b
+                    items-center
 
-                    border-sidebar-border
-
-                    px-5
-
-                    pb-4
-
-                    pt-6
+                    gap-2
                   "
                 >
 
-                  <div
+                  <span
                     className="
-                      mb-1
+                      h-1.5
 
-                      flex
+                      w-1.5
 
-                      items-center
+                      rounded-full
 
-                      gap-2
+                      bg-sidebar-primary
                     "
-                  >
+                  />
 
-                    <span
-                      className="
-                        h-1.5
-
-                        w-1.5
-
-                        rounded-full
-
-                        bg-sidebar-primary
-                      "
-                    />
-
-
-                    <span
-                      className="
-                        text-[9px]
-
-                        font-bold
-
-                        uppercase
-
-                        tracking-[0.18em]
-
-                        text-sidebar-foreground/35
-                      "
-                    >
-                      Business OS
-                    </span>
-
-                  </div>
-
-
-                  <h2
+                  <span
                     className="
-                      font-heading
-
-                      text-[15px]
+                      text-[9px]
 
                       font-bold
 
-                      tracking-tight
+                      uppercase
 
-                      text-white
+                      tracking-[0.18em]
+
+                      text-sidebar-foreground/35
                     "
                   >
-                    {
-                      selectedSection.label
-                    }
-                  </h2>
-
-
-                  <p
-                    className="
-                      mt-1
-
-                      text-[11px]
-
-                      leading-relaxed
-
-                      text-sidebar-foreground/45
-                    "
-                  >
-                    {
-                      getSectionDescription(
-                        selectedSection.label,
-                      )
-                    }
-                  </p>
+                    Business OS
+                  </span>
 
                 </div>
 
 
-                {/* ==========================================
-                    SECONDARY NAVIGATION
-                ========================================== */}
-
-                <nav
+                <h2
                   className="
-                    thin-scroll
+                    font-heading
 
-                    flex-1
+                    text-[15px]
 
-                    overflow-y-auto
+                    font-bold
 
-                    px-3
+                    tracking-tight
 
-                    py-4
+                    text-white
                   "
                 >
-
-                  <div
-                    className="
-                      space-y-1
-                    "
-                  >
-
-                    {
-                      selectedSection.items.map(
-
-                        (
-                          item,
-                          index,
-                        ) => {
-
-                          const count =
-
-                            item.count
-                              ? counts[
-                                  item.count
-                                ]
-                              : 0;
+                  {
+                    selectedSection.label
+                  }
+                </h2>
 
 
-                          const ItemIcon =
-                            item.icon;
+                <p
+                  className="
+                    mt-1
+
+                    text-[11px]
+
+                    leading-relaxed
+
+                    text-sidebar-foreground/45
+                  "
+                >
+                  {
+                    getSectionDescription(
+                      selectedSection.label,
+                    )
+                  }
+                </p>
+
+              </div>
 
 
-                          return (
+              {/* ==============================================
+                  SECONDARY NAVIGATION
+              ============================================== */}
 
-                            <NavLink
+              <nav
+                className="
+                  thin-scroll
 
-                              key={
-                                `${selectedSection.sectionKey}-${item.label}-${index}`
-                              }
+                  flex-1
 
-                              to={
-                                item.to
-                              }
+                  overflow-y-auto
 
-                              end={
-                                item.end
-                              }
+                  px-3
 
-                              onClick={() =>
-                                handleSubNavigationClick(
-                                  item.to,
-                                )
-                              }
+                  py-4
+                "
+              >
 
-                              className={(
-                                {
-                                  isActive,
-                                },
-                              ) =>
+                <div className="space-y-1">
 
-                                cn(
+                  {selectedSection.items.map(
+                    (
+                      item,
+                      index,
+                    ) => {
 
-                                  "group",
+                      const count =
+                        item.count
+                          ? counts[
+                              item.count
+                            ]
+                          : 0;
 
-                                  "relative",
 
-                                  "flex",
+                      const ItemIcon =
+                        item.icon;
 
-                                  "items-center",
 
-                                  "gap-3",
+                      return (
 
-                                  "rounded-xl",
+                        <NavLink
+                          key={`${selectedSection.sectionKey}-${item.label}-${index}`}
 
-                                  "px-3",
+                          to={item.to}
 
-                                  "py-2.5",
+                          end={item.end}
 
-                                  "transition-all",
+                          onClick={() =>
+                            handleSubNavigationClick(
+                              item.to,
+                            )
+                          }
 
-                                  "duration-200",
+                          className={({
+                            isActive,
+                          }) =>
+                            cn(
+
+                              "group",
+
+                              "relative",
+
+                              "flex",
+
+                              "items-center",
+
+                              "gap-3",
+
+                              "rounded-xl",
+
+                              "px-3",
+
+                              "py-2.5",
+
+                              "xl:transition-all",
+
+                              "xl:duration-200",
+
+
+                              isActive
+
+                                ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
+
+                                : "text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-white",
+                            )
+                          }
+                        >
+
+                          {({
+                            isActive,
+                          }) => (
+
+                            <>
+
+                              {/* Active marker */}
+
+                              <span
+                                className={cn(
+
+                                  "absolute",
+
+                                  "left-0",
+
+                                  "top-1/2",
+
+                                  "h-5",
+
+                                  "w-[3px]",
+
+                                  "-translate-y-1/2",
+
+                                  "rounded-r-full",
 
 
                                   isActive
 
-                                    ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
+                                    ? "bg-sidebar-primary-foreground opacity-100"
 
-                                    : "text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-white",
+                                    : "opacity-0",
+                                )}
+                              />
 
-                                )
 
-                              }
-                            >
+                              {/* Icon */}
 
-                              {
-                                (
+                              {ItemIcon ? (
+
+                                <ItemIcon
+                                  className="
+                                    h-4
+
+                                    w-4
+
+                                    shrink-0
+
+                                    xl:transition-transform
+
+                                    xl:duration-200
+
+                                    xl:group-hover:scale-105
+                                  "
+                                  strokeWidth={
+                                    1.9
+                                  }
+                                />
+
+                              ) : (
+
+                                <span
+                                  className={cn(
+
+                                    "h-1.5",
+
+                                    "w-1.5",
+
+                                    "shrink-0",
+
+                                    "rounded-full",
+
+
+                                    isActive
+
+                                      ? "bg-current"
+
+                                      : "bg-sidebar-foreground/30",
+                                  )}
+                                />
+
+                              )}
+
+
+                              {/* Label */}
+
+                              <span
+                                className="
+                                  min-w-0
+
+                                  flex-1
+
+                                  truncate
+
+                                  text-[12px]
+
+                                  font-medium
+                                "
+                              >
+                                {
+                                  item.label
+                                }
+                              </span>
+
+
+                              {/* Count */}
+
+                              {count > 0 && (
+
+                                <span
+                                  className={cn(
+
+                                    "rounded-full",
+
+                                    "px-1.5",
+
+                                    "py-0.5",
+
+                                    "text-[10px]",
+
+                                    "font-bold",
+
+
+                                    isActive
+
+                                      ? "bg-white/15 text-white"
+
+                                      : "bg-sidebar-primary/20 text-sidebar-primary-foreground",
+                                  )}
+                                >
                                   {
-                                    isActive,
-                                  },
-                                ) => (
+                                    count
+                                  }
+                                </span>
 
-                                  <>
+                              )}
 
 
-                                    {/* ACTIVE MARKER */}
+                              {/* Arrow */}
 
-                                    <span
-                                      className={cn(
+                              <ChevronRight
+                                className={cn(
 
-                                        "absolute",
+                                  "h-3.5",
 
-                                        "left-0",
+                                  "w-3.5",
 
-                                        "top-1/2",
+                                  "shrink-0",
 
-                                        "h-5",
 
-                                        "w-[3px]",
+                                  "xl:transition-all",
 
-                                        "-translate-y-1/2",
+                                  "xl:duration-200",
 
-                                        "rounded-r-full",
 
-                                        "transition-opacity",
+                                  isActive
 
+                                    ? "translate-x-0 opacity-80"
 
-                                        isActive
+                                    : "-translate-x-1 opacity-0 xl:group-hover:translate-x-0 xl:group-hover:opacity-50",
+                                )}
+                                strokeWidth={
+                                  1.8
+                                }
+                              />
 
-                                          ? "bg-sidebar-primary-foreground opacity-100"
+                            </>
 
-                                          : "opacity-0",
+                          )}
 
-                                      )}
-                                    />
+                        </NavLink>
 
+                      );
 
-                                    {/* ICON */}
+                    },
+                  )}
 
-                                    {
-                                      ItemIcon
+                </div>
 
-                                        ? (
+              </nav>
 
-                                          <ItemIcon
+            </div>
 
-                                            className="
-                                              h-4 w-4
-
-                                              shrink-0
-
-                                              transition-transform
-
-                                              duration-200
-
-                                              group-hover:scale-105
-                                            "
-
-                                            strokeWidth={
-                                              1.9
-                                            }
-
-                                          />
-
-                                        )
-
-                                        : (
-
-                                          <span
-                                            className={cn(
-
-                                              "h-1.5",
-
-                                              "w-1.5",
-
-                                              "shrink-0",
-
-                                              "rounded-full",
-
-
-                                              isActive
-
-                                                ? "bg-current"
-
-                                                : "bg-sidebar-foreground/30",
-
-                                            )}
-                                          />
-
-                                        )
-                                    }
-
-
-                                    {/* LABEL */}
-
-                                    <span
-                                      className="
-                                        min-w-0
-
-                                        flex-1
-
-                                        truncate
-
-                                        text-[12px]
-
-                                        font-medium
-                                      "
-                                    >
-                                      {
-                                        item.label
-                                      }
-                                    </span>
-
-
-                                    {/* COUNT */}
-
-                                    {
-                                      count > 0 && (
-
-                                        <span
-                                          className={cn(
-
-                                            "rounded-full",
-
-                                            "px-1.5",
-
-                                            "py-0.5",
-
-                                            "text-[10px]",
-
-                                            "font-bold",
-
-
-                                            isActive
-
-                                              ? "bg-white/15 text-white"
-
-                                              : "bg-sidebar-primary/20 text-sidebar-primary-foreground",
-
-                                          )}
-                                        >
-                                          {
-                                            count
-                                          }
-                                        </span>
-
-                                      )
-                                    }
-
-
-                                    {/* ARROW */}
-
-                                    <ChevronRight
-
-                                      className={cn(
-
-                                        "h-3.5",
-
-                                        "w-3.5",
-
-                                        "shrink-0",
-
-                                        "transition-all",
-
-                                        "duration-200",
-
-
-                                        isActive
-
-                                          ? "translate-x-0 opacity-80"
-
-                                          : "-translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-50",
-
-                                      )}
-
-                                      strokeWidth={
-                                        1.8
-                                      }
-
-                                    />
-
-                                  </>
-
-                                )
-                              }
-
-                            </NavLink>
-
-                          );
-
-                        },
-
-                      )
-                    }
-
-                  </div>
-
-                </nav>
-
-              </div>
-
-            )
-          }
+          )}
 
         </aside>
 

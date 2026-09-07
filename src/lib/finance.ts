@@ -142,6 +142,8 @@ export function splitExternalDocs(docs: ExternalDoc[], jobs: Job[]) {
     quotes: docs.filter((d) => d.doc_type === "quote").map((d) => externalToDoc(d, jobs)),
     invoices: docs.filter((d) => d.doc_type === "invoice").map((d) => externalToDoc(d, jobs)),
     receipts: docs.filter((d) => d.doc_type === "receipt"),
+    creditNotes: docs.filter((d) => d.doc_type === "credit_note"),
+    supplierCredits: docs.filter((d) => d.doc_type === "supplier_credit"),
   };
 }
 

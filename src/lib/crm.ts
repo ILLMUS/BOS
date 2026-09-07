@@ -77,3 +77,12 @@ export function formatDate(value: string | null | undefined) {
   if (!value) return "—";
   return new Date(value).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
 }
+
+/** Date plus clock time, for anything that happened at a precise moment. */
+export function formatDateTime(value: string | null | undefined) {
+  if (!value) return "—";
+  const d = new Date(value);
+  const time = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  return `${formatDate(value)} · ${time}`;
+}
+

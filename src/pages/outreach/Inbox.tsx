@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { formatDate } from "@/lib/crm";
+import { formatDateTime } from "@/lib/crm";
 import { ArrowRight, Loader2, Mail, Phone } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -92,7 +92,7 @@ export default function OutreachInbox() {
               <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
                 {s.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{s.email}</span>}
                 {s.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{s.phone}</span>}
-                <span>{formatDate(s.created_at)}</span>
+                <span>{formatDateTime(s.created_at)}</span>
               </div>
             </div>
             <div className="flex shrink-0 gap-2">

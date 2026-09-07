@@ -1,4 +1,4 @@
-import type { Expense, FinanceDoc, Payment } from "@/lib/finance";
+import type { Expense, ExternalDoc, FinanceDoc, Payment } from "@/lib/finance";
 
 /** Standard 30-day ageing buckets used by both customer and supplier reports. */
 export const AGEING_BUCKETS = [
@@ -17,8 +17,25 @@ export const DEFAULT_TERMS_DAYS = 30;
 /** Payment methods that mean the supplier has not actually been paid yet. */
 const UNPAID_METHODS = ["", "credit", "account", "on account", "unpaid", "invoice", "terms", "30 days"];
 
+/** A payment or credit note applied against one open item. */
+export interface Application {
+  kind: "payment" | "credit" | "refund";
+  id: string;
+  date: string | null;
+  reference: string | null;
+  method: string | null;
+  /** Amount applied to this specific item. */
+  amount: number;
+  /** Full value of the payment or credit note it came from. */
+  sourceAmount: number;
+  /** journal_entries.source_ref of the entry this application posts as. */
+  sourceRef: string;
+  documentUrl?: string | null;
+}
+
 export interface OpenItem {
   id: string;
+  kind: "invoice" | "credit_note" | "bill" | "supplier_credit";
   party: string;
   reference: string;
   jobId: string | null;
@@ -31,6 +48,9 @@ export interface OpenItem {
   daysOverdue: number;
   bucket: BucketKey;
   documentUrl?: string | null;
+  /** journal_entries.source_ref of the entry that books this document. */
+  sourceRef: string;
+  applications: Application[];
 }
 
 export interface AgeingRow {
@@ -113,16 +133,77 @@ function rollUp(items: OpenItem[]): AgeingReport {
   return { rows, total, overdue, buckets, itemCount: items.length };
 }
 
-/** Customer ageing: invoices less the payments recorded against the same job. */
+interface Pool {
+  remaining: number;
+  apply: (need: number) => number;
+  source: Application;
+}
+
+function makePool(app: Application): Pool {
+  const pool = {
+    remaining: app.amount,
+    source: app,
+    apply(need: number) {
+      const used = Math.min(pool.remaining, need);
+      pool.remaining -= used;
+      return used;
+    },
+  };
+  return pool;
+}
+
+/**
+ * Customer ageing: invoices less the payments and credit notes applied to them.
+ * Money is applied to the oldest invoice of the same job (or client) first.
+ */
 export function receivablesAgeing(
   invoices: FinanceDoc[],
   payments: Payment[],
+  creditNotes: ExternalDoc[] = [],
   asOf: Date = new Date(),
 ): AgeingReport {
-  const paidByJob = new Map<string, number>();
+  const poolsByJob = new Map<string, Pool[]>();
+  const poolsByParty = new Map<string, Pool[]>();
+
+  const push = (map: Map<string, Pool[]>, key: string, pool: Pool) => {
+    const list = map.get(key) || [];
+    list.push(pool);
+    map.set(key, list);
+  };
+
   for (const p of payments) {
-    if (!p.job_id) continue;
-    paidByJob.set(p.job_id, (paidByJob.get(p.job_id) || 0) + Number(p.amount || 0));
+    const amount = Number(p.amount || 0);
+    if (!p.job_id || amount <= 0) continue;
+    const isRefund = p.payment_type === "refund";
+    push(poolsByJob, p.job_id, makePool({
+      kind: isRefund ? "refund" : "payment",
+      id: p.id,
+      date: p.paid_at,
+      reference: p.reference,
+      method: p.method,
+      amount: isRefund ? 0 : amount,
+      sourceAmount: amount,
+      sourceRef: `payment:${p.id}`,
+      documentUrl: p.proof_url,
+    }));
+  }
+
+  for (const c of creditNotes) {
+    const amount = Number(c.amount || 0);
+    if (amount <= 0 || c.is_example) continue;
+    const pool = makePool({
+      kind: "credit",
+      id: c.id,
+      date: c.issued_at,
+      reference: c.reference,
+      method: null,
+      amount,
+      sourceAmount: amount,
+      sourceRef: `credit_note:${c.id}`,
+      documentUrl: c.document_url,
+    });
+    if (c.job_id) push(poolsByJob, c.job_id, pool);
+    else push(poolsByParty, (c.client_name || "Unknown client").toLowerCase(), pool);
   }
 
   const items: OpenItem[] = [];
@@ -133,23 +214,34 @@ export function receivablesAgeing(
     const amount = Number(inv.amount || 0);
     if (amount <= 0) continue;
 
-    // Payments settle a job's invoices oldest-first.
-    let paid = 0;
-    if (inv.jobId) {
-      const pool = paidByJob.get(inv.jobId) || 0;
-      paid = Math.min(pool, amount);
-      paidByJob.set(inv.jobId, pool - paid);
-    }
-    const outstanding = amount - paid;
-    if (outstanding <= 0.005) continue;
+    const party = inv.clientName || "Unknown client";
+    const pools = [
+      ...(inv.jobId ? poolsByJob.get(inv.jobId) || [] : []),
+      ...(poolsByParty.get(party.toLowerCase()) || []),
+    ];
 
+    const applications: Application[] = [];
+    let paid = 0;
+    for (const pool of pools) {
+      const need = amount - paid;
+      if (need <= 0.005) break;
+      const used = pool.apply(need);
+      if (used <= 0.005) continue;
+      paid += used;
+      applications.push({ ...pool.source, amount: used });
+    }
+
+    const outstanding = amount - paid;
     const issuedAt = inv.syncedAt ? inv.syncedAt.slice(0, 10) : null;
     const dueDate = inv.dueDate || (issuedAt ? addDays(issuedAt, DEFAULT_TERMS_DAYS) : null);
     const days = daysOverdue(dueDate, asOf);
 
+    if (outstanding <= 0.005) continue;
+
     items.push({
       id: `${inv.jobId || "x"}-${inv.reference}`,
-      party: inv.clientName || "Unknown client",
+      kind: "invoice",
+      party,
       reference: inv.reference,
       jobId: inv.jobId,
       jobNumber: inv.jobNumber,
@@ -161,45 +253,147 @@ export function receivablesAgeing(
       daysOverdue: days,
       bucket: bucketFor(days),
       documentUrl: inv.documentUrl,
+      sourceRef: `invoice:${inv.jobId || "x"}:${inv.reference}`,
+      applications,
     });
+  }
+
+  // Credit notes with value left over sit on the client's account as a negative item.
+  for (const [, pools] of [...poolsByJob, ...poolsByParty].map((e) => e)) {
+    for (const pool of pools) {
+      if (pool.source.kind !== "credit" || pool.remaining <= 0.005) continue;
+      const c = pool.source;
+      items.push({
+        id: `credit-${c.id}`,
+        kind: "credit_note",
+        party: creditNotes.find((n) => n.id === c.id)?.client_name || "Unknown client",
+        reference: c.reference || "Credit note",
+        jobId: creditNotes.find((n) => n.id === c.id)?.job_id ?? null,
+        jobNumber: null,
+        issuedAt: c.date,
+        dueDate: null,
+        amount: -c.sourceAmount,
+        paid: -(c.sourceAmount - pool.remaining),
+        outstanding: -pool.remaining,
+        daysOverdue: 0,
+        bucket: "current",
+        documentUrl: c.documentUrl,
+        sourceRef: c.sourceRef,
+        applications: [],
+      });
+    }
   }
 
   return rollUp(items);
 }
 
-/** Supplier ageing: recorded costs that have not been settled with a payment method. */
+/**
+ * Supplier ageing: recorded costs that have not been settled, less supplier
+ * credits recorded for the same vendor.
+ */
 export function payablesAgeing(
   expenses: Expense[],
   jobNumber: (jobId: string | null) => string | undefined,
+  supplierCredits: ExternalDoc[] = [],
   asOf: Date = new Date(),
 ): AgeingReport {
-  const items: OpenItem[] = [];
+  const poolsByVendor = new Map<string, Pool[]>();
+  for (const c of supplierCredits) {
+    const amount = Number(c.amount || 0);
+    if (amount <= 0 || c.is_example) continue;
+    const key = (c.client_name || "Unnamed supplier").trim().toLowerCase();
+    const list = poolsByVendor.get(key) || [];
+    list.push(makePool({
+      kind: "credit",
+      id: c.id,
+      date: c.issued_at,
+      reference: c.reference,
+      method: null,
+      amount,
+      sourceAmount: amount,
+      sourceRef: `supplier_credit:${c.id}`,
+      documentUrl: c.document_url,
+    }));
+    poolsByVendor.set(key, list);
+  }
 
-  for (const e of expenses) {
-    const method = (e.method || "").trim().toLowerCase();
-    if (!UNPAID_METHODS.includes(method)) continue;
+  const items: OpenItem[] = [];
+  const open = expenses
+    .filter((e) => UNPAID_METHODS.includes((e.method || "").trim().toLowerCase()))
+    .sort((a, b) => (a.spent_at || "").localeCompare(b.spent_at || ""));
+
+  for (const e of open) {
     const amount = Number(e.amount || 0);
     if (amount <= 0.005) continue;
+    const party = e.vendor?.trim() || "Unnamed supplier";
+
+    const applications: Application[] = [];
+    let paid = 0;
+    for (const pool of poolsByVendor.get(party.toLowerCase()) || []) {
+      const need = amount - paid;
+      if (need <= 0.005) break;
+      const used = pool.apply(need);
+      if (used <= 0.005) continue;
+      paid += used;
+      applications.push({ ...pool.source, amount: used });
+    }
+
+    const outstanding = amount - paid;
+    if (outstanding <= 0.005) continue;
 
     const dueDate = e.spent_at ? addDays(e.spent_at, DEFAULT_TERMS_DAYS) : null;
     const days = daysOverdue(dueDate, asOf);
 
     items.push({
       id: e.id,
-      party: e.vendor?.trim() || "Unnamed supplier",
+      kind: "bill",
+      party,
       reference: e.reference || e.description,
       jobId: e.job_id,
       jobNumber: jobNumber(e.job_id) || null,
       issuedAt: e.spent_at,
       dueDate,
       amount,
-      paid: 0,
-      outstanding: amount,
+      paid,
+      outstanding,
       daysOverdue: days,
       bucket: bucketFor(days),
       documentUrl: e.receipt_url,
+      sourceRef: `expense:${e.id}`,
+      applications,
     });
   }
 
+  for (const [, pools] of poolsByVendor) {
+    for (const pool of pools) {
+      if (pool.remaining <= 0.005) continue;
+      const c = pool.source;
+      const doc = supplierCredits.find((n) => n.id === c.id);
+      items.push({
+        id: `supplier-credit-${c.id}`,
+        kind: "supplier_credit",
+        party: doc?.client_name || "Unnamed supplier",
+        reference: c.reference || "Supplier credit",
+        jobId: doc?.job_id ?? null,
+        jobNumber: null,
+        issuedAt: c.date,
+        dueDate: null,
+        amount: -c.sourceAmount,
+        paid: -(c.sourceAmount - pool.remaining),
+        outstanding: -pool.remaining,
+        daysOverdue: 0,
+        bucket: "current",
+        documentUrl: c.documentUrl,
+        sourceRef: c.sourceRef,
+        applications: [],
+      });
+    }
+  }
+
   return rollUp(items);
+}
+
+/** Journal entries that book this document or any payment/credit applied to it. */
+export function relatedSourceRefs(item: OpenItem) {
+  return [item.sourceRef, ...item.applications.map((a) => a.sourceRef)];
 }

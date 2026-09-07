@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import BackButton from "@/components/layout/BackButton";
 import { toast } from "sonner";
-import { formatMoney, formatDate } from "@/lib/crm";
+import { formatMoney, formatDate, formatDateTime } from "@/lib/crm";
 import { DEFAULT_QC_TEMPLATE, loadQcTemplate, saveQcTemplate, slugKey, type QcTemplateItem } from "@/lib/qc";
 import { Loader2, Plus, Printer, Trash2 } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
@@ -224,7 +224,7 @@ export default function OperationsQC() {
                       <div className="flex-1">
                         <p className="text-sm font-medium">{item.label}</p>
                         {item.checked_at && (
-                          <p className="text-xs text-muted-foreground">Passed {formatDate(item.checked_at)}</p>
+                          <p className="text-xs text-muted-foreground">Passed {formatDateTime(item.checked_at)}</p>
                         )}
                         <Textarea
                           className="mt-2 text-xs"
@@ -259,7 +259,7 @@ export default function OperationsQC() {
                   <p><span className="text-muted-foreground">Client: </span>{job.client_name}</p>
                   <p><span className="text-muted-foreground">Service: </span>{job.service_type || "—"}</p>
                   <p><span className="text-muted-foreground">Location: </span>{job.client_location || "—"}</p>
-                  <p><span className="text-muted-foreground">Started: </span>{formatDate(job.created_at)}</p>
+                  <p><span className="text-muted-foreground">Started: </span>{formatDateTime(job.created_at)}</p>
                 </section>
 
                 <section>

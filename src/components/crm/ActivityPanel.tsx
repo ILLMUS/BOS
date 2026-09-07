@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { ACTIVITY_TYPE_LABELS, formatDate, type Activity, type ActivityType } from "@/lib/crm";
+import { ACTIVITY_TYPE_LABELS, formatDateTime, type Activity, type ActivityType } from "@/lib/crm";
 import { CheckCircle2, Loader2, Plus } from "lucide-react";
 
 export type ActivityLink = Partial<
@@ -109,7 +109,7 @@ export default function ActivityPanel({ link, title = "Activities & follow-ups" 
                 </div>
                 {a.body && <p className="mt-1 text-sm text-muted-foreground">{a.body}</p>}
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {a.due_at ? `Due ${formatDate(a.due_at)}` : `Logged ${formatDate(a.created_at)}`}
+                  {a.due_at ? `Due ${formatDateTime(a.due_at)}` : `Logged ${formatDateTime(a.created_at)}`}
                 </p>
               </div>
               {!a.completed_at && (

@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { formatDate, type Account } from "@/lib/crm";
+import { formatDate, formatDateTime, type Account } from "@/lib/crm";
 import { CAMPAIGN_CHANNELS, CAMPAIGN_STATUSES, CHANNEL_LABELS } from "./Campaigns";
 import { CheckCircle2, Clock, Loader2, Plus, Trash2 } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
@@ -168,8 +168,8 @@ export default function CampaignDetail() {
                   <p className="font-medium">{accountName(m.account_id)}</p>
                   <p className="text-xs text-muted-foreground">
                     Step {Math.min(m.current_step + 1, steps.length || 1)} of {steps.length || 1}
-                    {m.last_touch_at ? ` · Last touch ${formatDate(m.last_touch_at)}` : ""}
-                    {m.next_touch_at ? ` · Next ${formatDate(m.next_touch_at)}` : ""}
+                    {m.last_touch_at ? ` · Last touch ${formatDateTime(m.last_touch_at)}` : ""}
+                    {m.next_touch_at ? ` · Next ${formatDateTime(m.next_touch_at)}` : ""}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">

@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { STAGE_LABELS } from "@/lib/constants";
-import { formatDate } from "@/lib/crm";
+import { formatDate, formatDateTime } from "@/lib/crm";
 import type { Client360Data, Job, JobStage } from "@/hooks/useClient360";
 import { ArrowRight } from "lucide-react";
 
@@ -38,7 +38,7 @@ export default function WorkTab({ jobs, stages, templates, compact = false }: Pr
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="font-medium">{j.job_number} — {j.service_type || j.client_name}</p>
-            <p className="text-xs text-muted-foreground">{templateName(j)} · started {formatDate(j.created_at)}</p>
+            <p className="text-xs text-muted-foreground">{templateName(j)} · started {formatDateTime(j.created_at)}</p>
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline">{j.status}</Badge>
@@ -94,7 +94,7 @@ export default function WorkTab({ jobs, stages, templates, compact = false }: Pr
             return (
               <div key={s.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2 last:border-0">
                 <span>{job?.job_number} · {stageLabel(s)}</span>
-                <span className="text-xs text-muted-foreground">Approved {formatDate(s.approved_at)}</span>
+                <span className="text-xs text-muted-foreground">Approved {formatDateTime(s.approved_at)}</span>
               </div>
             );
           }) : <p className="text-muted-foreground">No approved stages yet.</p>}

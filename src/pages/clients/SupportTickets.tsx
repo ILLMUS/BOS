@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import BackButton from "@/components/layout/BackButton";
 import { toast } from "sonner";
-import { formatDate } from "@/lib/crm";
+import { formatDate, formatDateTime } from "@/lib/crm";
 import {
   label,
   loadClientAccounts,
@@ -181,7 +181,7 @@ export default function SupportTickets() {
                   <div>
                     <p className="font-medium">#{t.ticket_number} · {t.subject}</p>
                     <p className="text-xs text-muted-foreground">
-                      {accountName(t.account_id) || "No account"} · {label(t.category)} · {formatDate(t.created_at)}
+                      {accountName(t.account_id) || "No account"} · {label(t.category)} · {formatDateTime(t.created_at)}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

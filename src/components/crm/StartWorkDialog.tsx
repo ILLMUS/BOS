@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
+import { friendlyJobCreateError, logJobCreateFailure } from "@/lib/jobErrors";
 import { formatMoney, type Account, type Contact, type Deal } from "@/lib/crm";
 import { ArrowRight, Building2, Clock, Loader2, UserCheck, Workflow } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
@@ -126,7 +127,14 @@ export default function StartWorkDialog({ deal, onOpenChange, onDone }: Props) {
       onDone?.();
       navigate(`/jobs/${jobId}`);
     } catch (e) {
-      toast({ title: "Could not start work", description: (e as Error).message, variant: "destructive" });
+      toast({ title: "Could not start work", description: friendlyJobCreateError(e), variant: "destructive" });
+      logJobCreateFailure(e, {
+        userId: user?.id,
+        dealId: deal.id,
+        templateId,
+        clientName: deal.name,
+        source: "start_work_dialog",
+      });
     } finally {
       setStarting(false);
     }

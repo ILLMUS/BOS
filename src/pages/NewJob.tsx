@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { friendlyJobCreateError, logJobCreateFailure } from "@/lib/jobErrors";
 
 export default function NewJob() {
   const navigate = useNavigate();
@@ -79,7 +80,14 @@ export default function NewJob() {
       toast.success("Job created successfully");
       navigate(`/jobs/${jobId}`);
     } catch (err: any) {
-      toast.error(err.message || "Failed to create job");
+      toast.error(friendlyJobCreateError(err));
+      logJobCreateFailure(err, {
+        userId: user.id,
+        orgId,
+        clientName: form.client_name,
+        templateId,
+        source: "new_job_page",
+      });
     } finally {
       setSubmitting(false);
     }

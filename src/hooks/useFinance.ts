@@ -17,13 +17,15 @@ export interface FinanceData {
   quotes: FinanceDoc[];
   invoices: FinanceDoc[];
   receipts: ExternalDoc[];
+  creditNotes: ExternalDoc[];
+  supplierCredits: ExternalDoc[];
   externalDocs: ExternalDoc[];
   totals: FinanceTotals;
 }
 
 const EMPTY: FinanceData = {
   jobs: [], accounts: [], deals: [], payments: [], variations: [], expenses: [],
-  quotes: [], invoices: [], receipts: [], externalDocs: [],
+  quotes: [], invoices: [], receipts: [], creditNotes: [], supplierCredits: [], externalDocs: [],
   totals: { quoted: 0, approvedVariations: 0, invoiced: 0, received: 0, outstanding: 0, expenses: 0, netRevenue: 0 },
 };
 
@@ -70,6 +72,8 @@ export function useFinance() {
       deals: (dealRes.data || []) as Tables<"deals">[],
       payments, variations, expenses, quotes, invoices,
       receipts: external.receipts,
+      creditNotes: external.creditNotes,
+      supplierCredits: external.supplierCredits,
       externalDocs,
       totals: computeTotals({ quotes, invoices, payments, variations, expenses, receipts: external.receipts }),
     });

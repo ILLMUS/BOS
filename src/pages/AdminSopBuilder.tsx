@@ -30,6 +30,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { FIELD_TYPE_OPTIONS, slugifyKey, type SopFieldRow } from "@/lib/sopFields";
+import { detectFinanceForm, FINANCE_FORM_LABELS } from "@/lib/stageForms";
+
 import SopTemplateLibrary from "@/components/sop/SopTemplateLibrary";
 
 const NONE = "__none__";
@@ -457,6 +459,12 @@ export default function AdminSopBuilder() {
                     <span className="ml-2 text-xs text-muted-foreground">
                       {(fields[s.id] || []).length} question(s)
                     </span>
+                    {detectFinanceForm(s.name) && (
+                      <Badge variant="outline" className="ml-2 border-accent text-accent">
+                        {FINANCE_FORM_LABELS[detectFinanceForm(s.name)!]}
+                      </Badge>
+                    )}
+
                   </button>
                   <Button variant="ghost" size="icon" onClick={() => moveStage(idx, -1)}>
                     <ArrowUp className="h-4 w-4" />
@@ -480,7 +488,13 @@ export default function AdminSopBuilder() {
                       <div className="space-y-1.5">
                         <Label>Step name</Label>
                         <Input value={s.name} onChange={(e) => patchStage(s.id, { name: e.target.value })} />
+                        <p className="text-xs text-muted-foreground">
+                          {detectFinanceForm(s.name)
+                            ? `Money step: this step opens the built-in ${FINANCE_FORM_LABELS[detectFinanceForm(s.name)!].toLowerCase()} with the client's details and figures already filled in.`
+                            : "Tip: name a step Quotation, Invoice or Receipt and it automatically opens the matching money form instead of plain questions."}
+                        </p>
                       </div>
+
                       <div className="space-y-1.5">
                         <Label>Deadline (hours)</Label>
                         <Input

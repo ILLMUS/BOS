@@ -3130,6 +3130,7 @@ export type Database = {
         Returns: number
       }
       ensure_my_workspace: { Args: never; Returns: string }
+      finance_kind_for_stage: { Args: { _name: string }; Returns: string }
       get_capture_form: { Args: { _slug: string }; Returns: Json }
       get_job_by_tracking_token: { Args: { _token: string }; Returns: Json }
       get_user_roles: {

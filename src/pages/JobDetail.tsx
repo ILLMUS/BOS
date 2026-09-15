@@ -13,6 +13,11 @@ import { toast } from "sonner";
 import DynamicPipelineBar from "@/components/sop/DynamicPipelineBar";
 import DynamicStageForm from "@/components/sop/DynamicStageForm";
 import QuotationPrepForm from "@/components/stages/QuotationPrepForm";
+import InvoicingForm from "@/components/stages/InvoicingForm";
+import { detectFinanceForm } from "@/lib/stageForms";
+import { fetchJobPartyDetails, type JobPartyDetails } from "@/lib/clientDetails";
+
+
 import SlaTimer from "@/components/sla/SlaTimer";
 import SlaDeadlineEditor from "@/components/sla/SlaDeadlineEditor";
 import LegacyJobDetail from "@/pages/LegacyJobDetail";
@@ -137,6 +142,22 @@ export default function JobDetail() {
     () => detectFinanceForm(current?.stage_name),
     [current?.stage_name],
   );
+
+  // Client + business details captured earlier in the workflow, reused by every money form.
+  const [party, setParty] = useState<JobPartyDetails | null>(null);
+  useEffect(() => {
+    if (!job?.id) { setParty(null); return; }
+    let alive = true;
+    fetchJobPartyDetails(job.id).then((p) => { if (alive) setParty(p); });
+    return () => { alive = false; };
+  }, [job?.id]);
+
+  // Finance records for quotation / invoice / receipt steps are created and kept
+  // up to date by the database itself the moment a step is saved, so every job —
+  // including ones nobody opens — shows matching totals in Finance.
+
+
+
 
 
 
@@ -507,7 +528,7 @@ export default function JobDetail() {
                 )}
               </div>
 
-              {isQuoteStage ? (
+              {financeForm === "quote" ? (
                 <QuotationPrepForm
                   formData={formData}
                   onChange={(d) => {
@@ -521,8 +542,19 @@ export default function JobDetail() {
                   pdfOpen={pdfOpen}
                   onPdfOpenChange={setPdfOpen}
                 />
+              ) : financeForm ? (
+                <InvoicingForm
+                  mode={financeForm}
+                  formData={formData}
+                  onChange={(d) => {
+                    setFormData(d);
+                    setDirty(true);
+                  }}
+                  readOnly={!canEdit}
+                  jobId={job.id}
+                  stageId={current.id}
+                />
               ) : (
-
                 <DynamicStageForm
                   fields={fields}
                   formData={formData}
@@ -534,6 +566,7 @@ export default function JobDetail() {
                   jobId={job.id}
                 />
               )}
+
 
               {canEdit ? (
                 <div className="space-y-2 border-t border-border pt-4">
@@ -634,7 +667,7 @@ export default function JobDetail() {
                         Draft waiting to sync
                       </span>
                     )}
-                    {isQuoteStage && (
+                    {(financeForm === "quote") && (
                       <Button variant="outline" onClick={() => setPdfOpen(true)} className="border-accent/60 text-accent hover:bg-accent/10">
                         <FileDown className="mr-2 h-4 w-4" />
                         Preview &amp; send PDF
@@ -642,7 +675,7 @@ export default function JobDetail() {
                     )}
                     <Button
                       onClick={handleApprove}
-                      disabled={approving || (isQuoteStage && !quoteConfirmed)}
+                      disabled={approving || ((financeForm === "quote") && !quoteConfirmed)}
                       className="bg-success text-success-foreground hover:bg-success/90"
                     >
                       {approving ? (
@@ -661,7 +694,7 @@ export default function JobDetail() {
                       Reject
                     </Button>
                   </div>
-                  {isQuoteStage && !quoteConfirmed && (
+                  {(financeForm === "quote") && !quoteConfirmed && (
                     <p className="mt-2 text-xs text-muted-foreground">
                       Confirm the quote above before approving this step.
                     </p>

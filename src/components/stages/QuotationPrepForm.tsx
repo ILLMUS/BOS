@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useRef, useState } from "react";
 import DocumentPreviewDialog from "@/components/documents/DocumentPreviewDialog";
+import { fetchJobPartyDetails } from "@/lib/clientDetails";
 
 
 interface LineItem {
@@ -116,7 +117,8 @@ export default function QuotationPrepForm({ formData, onChange, stageId, jobId, 
         }
       }
 
-      return { job, estimate };
+      const parties = await fetchJobPartyDetails(jobId!);
+      return { job, estimate, parties };
     },
   });
 
@@ -170,6 +172,22 @@ export default function QuotationPrepForm({ formData, onChange, stageId, jobId, 
           </div>
         </div>
       </Card>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded border border-border p-3">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Quoted to (client)</p>
+          <p className="text-sm font-semibold mt-0.5">{prefillData?.parties?.customer.name || "Client"}</p>
+          <p className="text-xs text-muted-foreground">
+            {[prefillData?.parties?.customer.email, prefillData?.parties?.customer.phone, prefillData?.parties?.customer.address]
+              .filter(Boolean).join(" · ") || "No contact details captured yet"}
+          </p>
+        </div>
+        <div className="rounded border border-border p-3">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Quoted by (us)</p>
+          <p className="text-sm font-semibold mt-0.5">{prefillData?.parties?.supplier.name || "Our business"}</p>
+          <p className="text-xs text-muted-foreground">{prefillData?.parties?.supplier.address || "Add your address in settings"}</p>
+        </div>
+      </div>
 
       <StageField
         type="text"
@@ -334,7 +352,8 @@ export default function QuotationPrepForm({ formData, onChange, stageId, jobId, 
         onOpenChange={onPdfOpenChange ?? setLocalPdfOpen}
 
         jobId={jobId}
-        clientPhone={prefillData?.job?.client_phone}
+        clientPhone={prefillData?.parties?.customer.phone || prefillData?.job?.client_phone}
+        clientEmail={prefillData?.parties?.customer.email || prefillData?.job?.client_email}
         onStored={(url) => patch({ quote_document_url: url })}
         payload={{
           kind: "quote",
@@ -342,10 +361,10 @@ export default function QuotationPrepForm({ formData, onChange, stageId, jobId, 
           number: quoteRef || "—",
           date: formData.quote_date || new Date().toISOString().slice(0, 10),
           to: {
-            name: prefillData?.job?.client_name || "Client",
-            address: prefillData?.job?.client_location,
-            phone: prefillData?.job?.client_phone,
-            email: prefillData?.job?.client_email,
+            name: prefillData?.parties?.customer.name || prefillData?.job?.client_name || "Client",
+            address: prefillData?.parties?.customer.address || prefillData?.job?.client_location,
+            phone: prefillData?.parties?.customer.phone || prefillData?.job?.client_phone,
+            email: prefillData?.parties?.customer.email || prefillData?.job?.client_email,
           },
           items: lineItems.map((i) => ({
             description: i.description,

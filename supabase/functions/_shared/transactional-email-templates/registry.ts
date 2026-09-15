@@ -2,6 +2,7 @@
 
 import type * as React from 'npm:react@18.3.1'
 import { template as teamInvite } from './team-invite.tsx'
+import { template as clientDocument } from './client-document.tsx'
 
 export interface TemplateEntry {
   // deno-lint-ignore no-explicit-any
@@ -15,4 +16,5 @@ export interface TemplateEntry {
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'team-invite': teamInvite,
+  'client-document': clientDocument,
 }

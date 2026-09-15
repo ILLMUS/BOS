@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Download, Loader2, MessageCircle } from "lucide-react";
+import { Download, Loader2, Mail, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -22,20 +22,25 @@ interface Props {
   jobId?: string | null;
   /** Prefills the WhatsApp recipient. */
   clientPhone?: string | null;
+  /** Prefills the email recipient. */
+  clientEmail?: string | null;
   /** Called with the stored file URL after the document is shared. */
   onStored?: (url: string) => void;
 }
 
 /**
  * Generates the PDF, previews it inline and lets the team send it straight to the
- * client's WhatsApp number as a shareable link.
+ * client on WhatsApp or by email as a shareable link.
  */
-export default function DocumentPreviewDialog({ open, onOpenChange, payload, jobId, clientPhone, onStored }: Props) {
+export default function DocumentPreviewDialog({ open, onOpenChange, payload, jobId, clientPhone, clientEmail, onStored }: Props) {
   const { orgId } = useAuth();
   const [url, setUrl] = useState<string | null>(null);
   const [blob, setBlob] = useState<Blob | null>(null);
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
+  const [emailing, setEmailing] = useState(false);
+  const [issuer, setIssuer] = useState("Your business");
   const label = KIND_LABEL[payload.kind];
 
   const total = payload.total ?? (payload.items || []).reduce((s, i) => s + (i.amount ?? i.qty * i.rate), 0);
@@ -49,6 +54,7 @@ export default function DocumentPreviewDialog({ open, onOpenChange, payload, job
   useEffect(() => {
     if (!open) return;
     setPhone(normalizeWhatsAppNumber(clientPhone || ""));
+    setEmail((clientEmail || payload.to?.email || "").trim());
     let objectUrl: string | null = null;
     let active = true;
     (async () => {
@@ -59,6 +65,7 @@ export default function DocumentPreviewDialog({ open, onOpenChange, payload, job
       objectUrl = URL.createObjectURL(b);
       setBlob(b);
       setUrl(objectUrl);
+      setIssuer(from.name || "Your business");
       setMessage(
         `Hi ${payload.to.name || "there"}, please find your ${label.toLowerCase()} ${payload.number} ` +
         `totalling ${money(total)} from ${from.name}.`,
@@ -81,26 +88,29 @@ export default function DocumentPreviewDialog({ open, onOpenChange, payload, job
     URL.revokeObjectURL(a.href);
   };
 
+  /** Uploads the PDF to the job folder and returns a long-lived shareable link. */
+  const storeAndLink = async () => {
+    if (!blob || !jobId) return "";
+    const path = `${jobId}/documents/${Date.now()}-${fileName}`;
+    const { error } = await supabase.storage.from("job-files").upload(path, blob, {
+      contentType: "application/pdf",
+    });
+    if (error) throw error;
+    const { data, error: signErr } = await supabase.storage
+      .from("job-files")
+      .createSignedUrl(path, 60 * 60 * 24 * 30);
+    if (signErr) throw signErr;
+    const { data: { publicUrl } } = supabase.storage.from("job-files").getPublicUrl(path);
+    onStored?.(publicUrl);
+    return data?.signedUrl || "";
+  };
+
   const sendWhatsApp = async () => {
     if (!blob) return;
     if (!isValidWhatsAppNumber(phone)) return toast.error("Enter a valid WhatsApp number (e.g. 26876123456)");
     setSending(true);
     try {
-      let link = "";
-      if (jobId) {
-        const path = `${jobId}/documents/${Date.now()}-${fileName}`;
-        const { error } = await supabase.storage.from("job-files").upload(path, blob, {
-          contentType: "application/pdf",
-        });
-        if (error) throw error;
-        const { data, error: signErr } = await supabase.storage
-          .from("job-files")
-          .createSignedUrl(path, 60 * 60 * 24 * 30);
-        if (signErr) throw signErr;
-        link = data?.signedUrl || "";
-        const { data: { publicUrl } } = supabase.storage.from("job-files").getPublicUrl(path);
-        onStored?.(publicUrl);
-      }
+      const link = await storeAndLink();
       const text = link ? `${message}\n\n${link}` : message;
       window.open(whatsappLink(phone, text), "_blank", "noopener,noreferrer");
       toast.success("WhatsApp opened with the document link");
@@ -111,13 +121,45 @@ export default function DocumentPreviewDialog({ open, onOpenChange, payload, job
     }
   };
 
+  const sendEmail = async () => {
+    if (!blob) return;
+    const to = email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return toast.error("Enter a valid client email address");
+    setEmailing(true);
+    try {
+      const link = await storeAndLink();
+      const { error } = await supabase.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "client-document",
+          recipientEmail: to,
+          idempotencyKey: `doc-${payload.kind}-${payload.number}-${Date.now()}`,
+          templateData: {
+            clientName: payload.to.name || "",
+            businessName: issuer,
+            documentLabel: label,
+            documentNumber: payload.number,
+            amount: money(total),
+            message,
+            documentUrl: link,
+          },
+        },
+      });
+      if (error) throw error;
+      toast.success(`${label} emailed to ${to}`);
+    } catch (e: any) {
+      toast.error(e.message || "Could not send the email");
+    } finally {
+      setEmailing(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{label} {payload.number} — PDF preview</DialogTitle>
           <DialogDescription>
-            Review the document, download it, or send it straight to the client on WhatsApp.
+            Review the document, download it, or send it straight to the client on WhatsApp or by email.
           </DialogDescription>
         </DialogHeader>
 
@@ -131,7 +173,7 @@ export default function DocumentPreviewDialog({ open, onOpenChange, payload, job
           )}
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-[220px_1fr]">
+        <div className="grid gap-4 sm:grid-cols-[220px_220px_1fr]">
           <div className="space-y-1.5">
             <Label htmlFor="doc-wa">Client WhatsApp number</Label>
             <Input
@@ -144,6 +186,17 @@ export default function DocumentPreviewDialog({ open, onOpenChange, payload, job
             <p className="text-[11px] text-muted-foreground">Country code, digits only (Eswatini = 268).</p>
           </div>
           <div className="space-y-1.5">
+            <Label htmlFor="doc-email">Client email</Label>
+            <Input
+              id="doc-email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="client@example.com"
+              inputMode="email"
+            />
+            <p className="text-[11px] text-muted-foreground">Sent from your business email address.</p>
+          </div>
+          <div className="space-y-1.5">
             <Label htmlFor="doc-msg">Message</Label>
             <Textarea id="doc-msg" rows={3} value={message} onChange={(e) => setMessage(e.target.value)} />
           </div>
@@ -153,9 +206,13 @@ export default function DocumentPreviewDialog({ open, onOpenChange, payload, job
           <Button variant="outline" onClick={download} disabled={!blob} className="gap-1.5">
             <Download className="h-4 w-4" /> Download PDF
           </Button>
+          <Button variant="outline" onClick={sendEmail} disabled={!blob || emailing} className="gap-1.5">
+            {emailing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+            Email to client
+          </Button>
           <Button onClick={sendWhatsApp} disabled={!blob || sending} className="gap-1.5">
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
-            Send to client on WhatsApp
+            Send on WhatsApp
           </Button>
         </div>
       </DialogContent>

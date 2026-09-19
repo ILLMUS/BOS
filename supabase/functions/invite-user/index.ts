@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendTemplateEmailLogged } from "../_shared/transactional-email-templates/send-and-log.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -134,22 +135,18 @@ Deno.serve(async (req) => {
     let emailSent = false;
     let emailError: string | null = null;
     try {
-      const { error: mailErr } = await admin.functions.invoke("send-transactional-email", {
-        body: {
-          templateName: "team-invite",
-          recipientEmail: email,
-          idempotencyKey: `team-invite-${newUserId}-${Date.now()}`,
-          templateData: {
-            fullName: full_name || email,
-            orgName: org?.name || "your team",
-            email,
-            password: generatedPassword || password || null,
-            loginUrl,
-            magicLink: inviteLink,
-          },
+      const result = await sendTemplateEmailLogged("team-invite", email, {
+        idempotencyKey: `team-invite-${newUserId}-${Date.now()}`,
+        templateData: {
+          fullName: full_name || email,
+          orgName: org?.name || "your team",
+          email,
+          password: generatedPassword || password || null,
+          loginUrl,
+          magicLink: inviteLink,
         },
       });
-      if (mailErr) throw mailErr;
+      if (!result.sent) throw new Error("This address has opted out of emails");
       emailSent = true;
     } catch (e: any) {
       emailError = e?.message ?? "Email sending is not set up yet";

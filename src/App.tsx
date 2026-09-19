@@ -5,6 +5,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { CopyProvider } from "@/contexts/CopyContext";
+import { BrandingProvider } from "@/contexts/BrandingContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
 import PageSkeleton from "@/components/ui/page-skeleton";
@@ -25,9 +27,11 @@ const AdminUsers = lazy(() => import("@/pages/AdminUsers"));
 const AdminAssignments = lazy(() => import("@/pages/AdminAssignments"));
 const AdminSopBuilder = lazy(() => import("@/pages/AdminSopBuilder"));
 const AdminRoles = lazy(() => import("@/pages/AdminRoles"));
+const AdminTeams = lazy(() => import("@/pages/AdminTeams"));
 const Configuration = lazy(() => import("@/pages/admin/Configuration"));
 const Integrations = lazy(() => import("@/pages/admin/Integrations"));
 const Settings = lazy(() => import("@/pages/Settings"));
+const Recovery = lazy(() => import("@/pages/Recovery"));
 const Reports = lazy(() => import("@/pages/Reports"));
 const TrackJob = lazy(() => import("@/pages/TrackJob"));
 const Onboarding = lazy(() => import("@/pages/Onboarding"));
@@ -37,6 +41,8 @@ const OutreachInbox = lazy(() => import("@/pages/outreach/Inbox"));
 const Campaigns = lazy(() => import("@/pages/outreach/Campaigns"));
 const CampaignDetail = lazy(() => import("@/pages/outreach/CampaignDetail"));
 const OutreachTimeline = lazy(() => import("@/pages/outreach/Timeline"));
+const FollowUpQueue = lazy(() => import("@/pages/outreach/FollowUpQueue"));
+const FollowUpResults = lazy(() => import("@/pages/outreach/FollowUpResults"));
 const SalesWinLoss = lazy(() => import("@/pages/sales/WinLoss"));
 const SalesForecast = lazy(() => import("@/pages/sales/Forecast"));
 const SalesProposals = lazy(() => import("@/pages/sales/Proposals"));
@@ -72,6 +78,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <BrandingProvider>
+          <CopyProvider>
           <Suspense fallback={<PageSkeleton />}>
           <Routes>
             <Route path="/login" element={<Login />} />
@@ -96,6 +104,8 @@ const App = () => (
               <Route path="/outreach/campaigns" element={<Campaigns />} />
               <Route path="/outreach/campaigns/:id" element={<CampaignDetail />} />
               <Route path="/outreach/timeline" element={<OutreachTimeline />} />
+              <Route path="/outreach/follow-ups" element={<FollowUpQueue />} />
+              <Route path="/outreach/results" element={<FollowUpResults />} />
               <Route path="/sales" element={<Sales />} />
               <Route path="/sales/win-loss" element={<SalesWinLoss />} />
               <Route path="/sales/forecast" element={<SalesForecast />} />
@@ -124,15 +134,19 @@ const App = () => (
               <Route path="/admin/assignments" element={<AdminAssignments />} />
               <Route path="/admin/sop" element={<AdminSopBuilder />} />
               <Route path="/admin/roles" element={<AdminRoles />} />
+              <Route path="/admin/teams" element={<AdminTeams />} />
               <Route path="/admin/configuration" element={<Configuration />} />
               <Route path="/admin/integrations" element={<Integrations />} />
               <Route path="/admin/reports" element={<Reports />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/recovery" element={<Recovery />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
           </Suspense>
+          </CopyProvider>
+          </BrandingProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

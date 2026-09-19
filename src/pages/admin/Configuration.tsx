@@ -10,6 +10,8 @@ import BusinessProfileCard from "@/components/config/BusinessProfileCard";
 import DocumentBrandingCard from "@/components/config/DocumentBrandingCard";
 import SlaDefaultsEditor from "@/components/admin/SlaDefaultsEditor";
 import BusinessTemplateGallery from "@/components/config/BusinessTemplateGallery";
+import BusinessLanguageCard from "@/components/config/BusinessLanguageCard";
+import BusinessBrandingCard from "@/components/config/BusinessBrandingCard";
 
 /** Phase 8 — one place where an organization defines how its Business OS runs. */
 export default function Configuration() {
@@ -55,6 +57,8 @@ export default function Configuration() {
 
           <TabsContent value="business" className="mt-4 space-y-6">
             <BusinessProfileCard />
+            <BusinessBrandingCard />
+            <BusinessLanguageCard />
             <DocumentBrandingCard />
             {list("services")}
             {list("departments")}

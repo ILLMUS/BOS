@@ -1,0 +1,55 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789746672220,
+      "tag": "0000_notify_finance_reconcile_mismatch",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789752123848,
+      "tag": "0001_campaign_scheduled_sends",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789752763318,
+      "tag": "0002_campaign_send_audit",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789753016884,
+      "tag": "0003_campaign_send_audit_permissions",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789796807700,
+      "tag": "0004_campaigns_soft_delete",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789798927625,
+      "tag": "0005_add_business_branding",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789801641633,
+      "tag": "0006_client_portal_approvals",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -31,6 +31,9 @@ import {
 import { toast } from "sonner";
 import { FIELD_TYPE_OPTIONS, slugifyKey, type SopFieldRow } from "@/lib/sopFields";
 import { detectFinanceForm, FINANCE_FORM_LABELS } from "@/lib/stageForms";
+import { useDeferredDelete } from "@/hooks/useDeferredDelete";
+import { autosaveLabel, type AutosaveState } from "@/hooks/useAutosave";
+
 
 import SopTemplateLibrary from "@/components/sop/SopTemplateLibrary";
 
@@ -64,6 +67,7 @@ interface Role {
 
 export default function AdminSopBuilder() {
   const { isAdmin, orgId, user } = useAuth();
+  const { remove: deferredDelete } = useDeferredDelete();
   const [loading, setLoading] = useState(true);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -74,6 +78,35 @@ export default function AdminSopBuilder() {
   const [newTemplateName, setNewTemplateName] = useState("");
   const [busy, setBusy] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [autoState, setAutoState] = useState<AutosaveState>("idle");
+  const saveTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+
+  useEffect(() => {
+    const map = saveTimers.current;
+    return () => map.forEach((t) => clearTimeout(t));
+  }, []);
+
+  /** Saves an edited step or question about a second after typing stops. */
+  const scheduleSave = (key: string, run: () => Promise<void>) => {
+    const existing = saveTimers.current.get(key);
+    if (existing) clearTimeout(existing);
+    setAutoState("pending");
+    saveTimers.current.set(
+      key,
+      setTimeout(async () => {
+        saveTimers.current.delete(key);
+        setAutoState("saving");
+        try {
+          await run();
+          setAutoState("saved");
+        } catch {
+          setAutoState("error");
+        }
+      }, 1000),
+    );
+  };
+
+
 
   const loadBase = async () => {
     if (!orgId) return;
@@ -154,13 +187,29 @@ export default function AdminSopBuilder() {
     toast.success("This workflow is now used for new jobs");
   };
 
-  const deleteTemplate = async (id: string) => {
-    const { error } = await supabase.from("sop_templates").delete().eq("id", id);
-    if (error) return toast.error(error.message);
-    setTemplates((p) => p.filter((t) => t.id !== id));
-    if (activeTemplate === id) setActiveTemplate(null);
-    toast.success("Workflow deleted");
+  const deleteTemplate = async (t: Template) => {
+    const wasActive = activeTemplate === t.id;
+    await deferredDelete({
+      id: t.id,
+      label: t.name,
+      onRemove: () => {
+        setTemplates((p) => p.filter((x) => x.id !== t.id));
+        if (wasActive) setActiveTemplate(null);
+      },
+      onRestore: () => {
+        setTemplates((p) => [...p, t].sort((a, b) => a.version - b.version));
+        if (wasActive) setActiveTemplate(t.id);
+      },
+      onCommit: async () => {
+        const { error } = await supabase.from("sop_templates").delete().eq("id", t.id);
+        if (error) {
+          toast.error(error.message);
+          void loadBase();
+        }
+      },
+    });
   };
+
 
   const current = templates.find((t) => t.id === activeTemplate) ?? null;
   const locked = !!current?.is_locked;
@@ -201,9 +250,14 @@ export default function AdminSopBuilder() {
   };
 
   const patchStage = (id: string, patch: Partial<Stage>) =>
-    setStages((p) => p.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+    setStages((p) => {
+      const next = p.map((s) => (s.id === id ? { ...s, ...patch } : s));
+      const target = next.find((s) => s.id === id);
+      if (target) scheduleSave(`stage:${id}`, () => saveStage(target, true));
+      return next;
+    });
 
-  const saveStage = async (s: Stage) => {
+  const saveStage = async (s: Stage, silent = false) => {
     const { error } = await supabase
       .from("sop_stages")
       .update({
@@ -215,8 +269,11 @@ export default function AdminSopBuilder() {
         requires_approval: s.requires_approval,
       })
       .eq("id", s.id);
-    if (error) return toast.error(error.message);
-    toast.success("Step saved");
+    if (error) {
+      toast.error(error.message);
+      throw error;
+    }
+    if (!silent) toast.success("Step saved");
   };
 
   const moveStage = async (index: number, dir: -1 | 1) => {
@@ -230,12 +287,30 @@ export default function AdminSopBuilder() {
     );
   };
 
-  const deleteStage = async (id: string) => {
-    const { error } = await supabase.from("sop_stages").delete().eq("id", id);
-    if (error) return toast.error(error.message);
-    setStages((p) => p.filter((s) => s.id !== id).map((s, i) => ({ ...s, position: i })));
-    toast.success("Step removed");
+  const deleteStage = async (s: Stage) => {
+    const stageFields = fields[s.id] || [];
+    await deferredDelete({
+      id: s.id,
+      label: s.name,
+      message: `Step “${s.name}” removed`,
+      onRemove: () => {
+        setStages((p) => p.filter((x) => x.id !== s.id).map((x, i) => ({ ...x, position: i })));
+        if (openStage === s.id) setOpenStage(null);
+      },
+      onRestore: () => {
+        setStages((p) => [...p, s].sort((a, b) => a.position - b.position).map((x, i) => ({ ...x, position: i })));
+        setFields((p) => ({ ...p, [s.id]: stageFields }));
+      },
+      onCommit: async () => {
+        const { error } = await supabase.from("sop_stages").delete().eq("id", s.id);
+        if (error) {
+          toast.error(error.message);
+          if (activeTemplate) void loadStages(activeTemplate);
+        }
+      },
+    });
   };
+
 
   const addField = async (stageId: string) => {
     if (!orgId) return;
@@ -258,17 +333,20 @@ export default function AdminSopBuilder() {
   };
 
   const patchField = (stageId: string, id: string, patch: Partial<SopFieldRow>) =>
-    setFields((p) => ({
-      ...p,
-      [stageId]: (p[stageId] || []).map((f) => (f.id === id ? { ...f, ...patch } : f)),
-    }));
+    setFields((p) => {
+      const list = (p[stageId] || []).map((f) => (f.id === id ? { ...f, ...patch } : f));
+      const target = list.find((f) => f.id === id);
+      if (target) scheduleSave(`field:${id}`, () => saveField(stageId, target, true));
+      return { ...p, [stageId]: list };
+    });
 
-  const saveField = async (stageId: string, f: SopFieldRow) => {
+  const saveField = async (stageId: string, f: SopFieldRow, silent = false) => {
+    const nextKey = slugifyKey(f.label) + "_" + f.id.slice(0, 4);
     const { error } = await supabase
       .from("sop_fields")
       .update({
         label: f.label,
-        field_key: slugifyKey(f.label) + "_" + f.id.slice(0, 4),
+        field_key: nextKey,
         field_type: f.field_type,
         required: f.required,
         placeholder: f.placeholder,
@@ -276,16 +354,38 @@ export default function AdminSopBuilder() {
         options: f.options,
       })
       .eq("id", f.id);
-    if (error) return toast.error(error.message);
-    patchField(stageId, f.id, { field_key: slugifyKey(f.label) + "_" + f.id.slice(0, 4) });
-    toast.success("Question saved");
+    if (error) {
+      toast.error(error.message);
+      throw error;
+    }
+    setFields((p) => ({
+      ...p,
+      [stageId]: (p[stageId] || []).map((x) => (x.id === f.id ? { ...x, field_key: nextKey } : x)),
+    }));
+    if (!silent) toast.success("Question saved");
   };
 
-  const deleteField = async (stageId: string, id: string) => {
-    const { error } = await supabase.from("sop_fields").delete().eq("id", id);
-    if (error) return toast.error(error.message);
-    setFields((p) => ({ ...p, [stageId]: (p[stageId] || []).filter((f) => f.id !== id) }));
+  const deleteField = async (stageId: string, f: SopFieldRow) => {
+    await deferredDelete({
+      id: f.id,
+      label: f.label,
+      message: `Question “${f.label}” removed`,
+      onRemove: () => setFields((p) => ({ ...p, [stageId]: (p[stageId] || []).filter((x) => x.id !== f.id) })),
+      onRestore: () =>
+        setFields((p) => ({
+          ...p,
+          [stageId]: [...(p[stageId] || []), f].sort((a, b) => a.position - b.position),
+        })),
+      onCommit: async () => {
+        const { error } = await supabase.from("sop_fields").delete().eq("id", f.id);
+        if (error) {
+          toast.error(error.message);
+          if (activeTemplate) void loadStages(activeTemplate);
+        }
+      },
+    });
   };
+
 
   if (loading) {
     return (
@@ -300,6 +400,11 @@ export default function AdminSopBuilder() {
       <div className="flex items-center gap-3">
         <Workflow className="h-6 w-6 text-accent" />
         <h1 className="font-heading text-2xl font-bold">SOP Builder</h1>
+        {autoState !== "idle" && (
+          <span className={`text-xs ${autoState === "error" ? "text-destructive" : "text-muted-foreground"}`}>
+            {autosaveLabel(autoState)}
+          </span>
+        )}
       </div>
       <p className="text-sm text-muted-foreground">
         Answer the questions below and the app builds your workflow. Every step, owner, deadline and form
@@ -369,7 +474,7 @@ export default function AdminSopBuilder() {
                     variant="ghost"
                     size="icon"
                     className="h-6 w-6 text-destructive"
-                    onClick={() => deleteTemplate(t.id)}
+                    onClick={() => deleteTemplate(t)}
                   >
                     <Trash2 className="h-3 w-3" />
                   </Button>
@@ -476,7 +581,7 @@ export default function AdminSopBuilder() {
                     variant="ghost"
                     size="icon"
                     className="text-destructive"
-                    onClick={() => deleteStage(s.id)}
+                    onClick={() => deleteStage(s)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -624,7 +729,7 @@ export default function AdminSopBuilder() {
                                 variant="ghost"
                                 size="icon"
                                 className="text-destructive"
-                                onClick={() => deleteField(s.id, f.id)}
+                                onClick={() => deleteField(s.id, f)}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>

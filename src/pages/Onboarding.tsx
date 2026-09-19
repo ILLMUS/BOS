@@ -13,8 +13,9 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, ArrowLeft, ArrowRight, Building2, Loader2, LogOut, Plus, Sparkles, Trash2 } from "lucide-react";
 import { EMPLOYEE_RANGES, NICHE_PRESETS } from "@/lib/businessSetup";
+import { COPY_TERMS, copyForNiche, copyToItems, type CopyMap } from "@/lib/copyConfig";
 
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 5;
 
 export default function Onboarding() {
   const { session, isLoading, orgId, refreshProfile, signOut } = useAuth();
@@ -35,6 +36,7 @@ export default function Onboarding() {
   const [workflowName, setWorkflowName] = useState("");
   const [steps, setSteps] = useState<string[]>([]);
   const [newStep, setNewStep] = useState("");
+  const [words, setWords] = useState<CopyMap>(() => copyForNiche(null));
 
   if (isLoading) {
     return (
@@ -57,6 +59,7 @@ export default function Onboarding() {
       setRoles(p.roles);
       setSteps(p.steps);
       setWorkflowName(p.workflow);
+      setWords(copyForNiche(key));
     }
   };
 
@@ -72,12 +75,13 @@ export default function Onboarding() {
     (step === 1 && name.trim() !== "" && nicheKey !== "" && (nicheKey !== "other" || nicheOther.trim() !== "")) ||
     (step === 2) ||
     (step === 3 && steps.length > 0) ||
-    step === 4;
+    step === 4 ||
+    step === 5;
 
   const handleSubmit = async () => {
     setError("");
     setSubmitting(true);
-    const { error: rpcError } = await supabase.rpc("setup_workspace", {
+    const { data: newOrgId, error: rpcError } = await supabase.rpc("setup_workspace", {
       _name: name.trim(),
       _job_prefix: prefix.trim() || null,
       _industry: nicheLabel || null,
@@ -93,6 +97,15 @@ export default function Onboarding() {
       setError(rpcError.message);
       setSubmitting(false);
       return;
+    }
+    if (newOrgId) {
+      // Store the wording this business picked so every screen speaks their language.
+      await supabase
+        .from("org_config")
+        .upsert(
+          { org_id: newOrgId as string, key: "copy_terms", value: copyToItems(words) as unknown as never },
+          { onConflict: "org_id,key" },
+        );
     }
     await refreshProfile();
     setSubmitting(false);
@@ -283,6 +296,29 @@ export default function Onboarding() {
             )}
 
             {step === 4 && (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  What do you call things in your business? These words are used everywhere in the app.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {COPY_TERMS.map((term) => (
+                    <div key={term.term} className="space-y-1">
+                      <Label htmlFor={`w-${term.term}`} className="text-xs">{term.label}</Label>
+                      <Input
+                        id={`w-${term.term}`}
+                        value={words[term.term]}
+                        onChange={(e) => setWords({ ...words, [term.term]: e.target.value })}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Leave them as they are if they already fit. You can change them later.
+                </p>
+              </div>
+            )}
+
+            {step === 5 && (
               <div className="space-y-3 text-sm">
                 <p className="text-muted-foreground">Check it over, then we'll build your workspace.</p>
                 <div className="rounded border border-border divide-y divide-border">
@@ -294,6 +330,7 @@ export default function Onboarding() {
                     ["Services", services || "—"],
                     ["Roles", roles.join(", ") || "—"],
                     ["Workflow", `${workflowName || "Main Workflow"} (${steps.length} steps)`],
+                    ["Wording", `${words.work_items}, ${words.stages}, ${words.clients}`],
                   ].map(([k, v]) => (
                     <div key={k as string} className="flex gap-4 p-3">
                       <span className="w-28 shrink-0 text-muted-foreground">{k}</span>

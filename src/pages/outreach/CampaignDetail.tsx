@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,18 +8,23 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { formatDate, formatDateTime, type Account } from "@/lib/crm";
+import { formatDateTime, type Account } from "@/lib/crm";
 import { CAMPAIGN_CHANNELS, CAMPAIGN_STATUSES, CHANNEL_LABELS } from "./Campaigns";
 import { CheckCircle2, Clock, Loader2, Plus, Trash2 } from "lucide-react";
+import WhatsAppStepDialog from "@/components/outreach/WhatsAppStepDialog";
+import ScheduleStepDialog from "@/components/outreach/ScheduleStepDialog";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Campaign = Tables<"campaigns">;
 type Step = Tables<"campaign_steps">;
 type Member = Tables<"campaign_members">;
+type Activity = Tables<"activities">;
+type Profile = Pick<Tables<"profiles">, "id" | "full_name">;
 
 const MEMBER_STATUSES = ["pending", "contacted", "replied", "meeting", "converted", "unsubscribed"];
 
@@ -30,24 +35,31 @@ export default function CampaignDetail() {
   const [steps, setSteps] = useState<Step[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [stepOpen, setStepOpen] = useState(false);
   const [memberOpen, setMemberOpen] = useState(false);
   const [stepForm, setStepForm] = useState({ subject: "", body: "", channel: "email", day_offset: "0" });
   const [pick, setPick] = useState<string>("");
+  const [openTrail, setOpenTrail] = useState<string | null>(null);
 
   const load = async () => {
     if (!id) return;
-    const [c, s, m, a] = await Promise.all([
+    const [c, s, m, a, act, p] = await Promise.all([
       supabase.from("campaigns").select("*").eq("id", id).maybeSingle(),
       supabase.from("campaign_steps").select("*").eq("campaign_id", id).order("position"),
       supabase.from("campaign_members").select("*").eq("campaign_id", id).order("created_at"),
       supabase.from("accounts").select("*").order("name"),
+      supabase.from("activities").select("*").order("created_at", { ascending: false }).limit(500),
+      supabase.from("profiles").select("id, full_name"),
     ]);
     setCampaign(c.data);
     setSteps(s.data || []);
     setMembers(m.data || []);
     setAccounts(a.data || []);
+    setActivities(act.data || []);
+    setProfiles((p.data as Profile[]) || []);
     setLoading(false);
   };
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [id]);
@@ -117,6 +129,32 @@ export default function CampaignDetail() {
   };
 
   const accountName = (aid: string | null) => accounts.find((a) => a.id === aid)?.name || "Unknown";
+  const personName = (uid: string | null) => profiles.find((p) => p.id === uid)?.full_name || "Unassigned";
+
+  /** Activities belonging to this campaign, newest first. */
+  const campaignActivities = useMemo(() => {
+    if (!campaign) return [] as Activity[];
+    const prefix = `${campaign.name}: `;
+    return activities.filter((a) => a.subject?.startsWith(prefix));
+  }, [activities, campaign]);
+
+  const trailFor = (m: Member) =>
+    campaignActivities
+      .filter((a) => (m.account_id && a.account_id === m.account_id) || (m.contact_id && a.contact_id === m.contact_id) || (m.lead_id && a.lead_id === m.lead_id))
+      .sort((a, b) => (b.created_at > a.created_at ? 1 : -1));
+
+  const stepReport = (index: number, step: Step) => {
+    const total = members.length;
+    const done = members.filter((m) => m.current_step > index).length;
+    const atStep = members.filter((m) => m.current_step === index).length;
+    const acts = campaignActivities.filter((a) => a.subject === `${campaign?.name}: ${step.subject}`);
+    const completed = acts.filter((a) => a.completed_at);
+    const dueNow = acts.filter((a) => !a.completed_at && a.due_at && new Date(a.due_at) <= new Date());
+    const scheduled = acts.filter((a) => !a.completed_at && a.due_at && new Date(a.due_at) > new Date());
+    const lastAt = completed[0]?.completed_at ?? null;
+    const owners = Array.from(new Set(acts.map((a) => a.assigned_to).filter(Boolean) as string[]));
+    return { total, done, atStep, completed: completed.length, dueNow: dueNow.length, scheduled: scheduled.length, lastAt, owners, pct: total ? Math.round((done / total) * 100) : 0 };
+  };
 
   if (loading) return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />;
   if (!campaign) return <p className="text-sm text-muted-foreground">Campaign not found.</p>;
@@ -161,33 +199,72 @@ export default function CampaignDetail() {
           </Dialog>
 
           {!members.length && <p className="text-sm text-muted-foreground">No one in this campaign yet.</p>}
-          {members.map((m) => (
-            <Card key={m.id}>
-              <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <p className="font-medium">{accountName(m.account_id)}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Step {Math.min(m.current_step + 1, steps.length || 1)} of {steps.length || 1}
-                    {m.last_touch_at ? ` · Last touch ${formatDateTime(m.last_touch_at)}` : ""}
-                    {m.next_touch_at ? ` · Next ${formatDateTime(m.next_touch_at)}` : ""}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Select value={m.status} onValueChange={(v) => setMemberStatus(m, v)}>
-                    <SelectTrigger className="h-8 w-36"><SelectValue /></SelectTrigger>
-                    <SelectContent>{MEMBER_STATUSES.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
-                  </Select>
-                  <Button size="sm" variant="outline" disabled={!steps.length || m.current_step >= steps.length} onClick={() => logTouch(m)}>
-                    <CheckCircle2 className="mr-1 h-4 w-4" /> Log touch
-                  </Button>
-                  <Button size="icon" variant="ghost" className="text-destructive"
-                    onClick={async () => { await supabase.from("campaign_members").delete().eq("id", m.id); load(); }}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          {members.map((m) => {
+            const trail = trailFor(m);
+            const expanded = openTrail === m.id;
+            const overdue = m.next_touch_at && new Date(m.next_touch_at) < new Date();
+            return (
+              <Card key={m.id}>
+                <CardContent className="space-y-3 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="font-medium">{accountName(m.account_id)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Step {Math.min(m.current_step + 1, steps.length || 1)} of {steps.length || 1}
+                        {m.last_touch_at ? ` · Last touch ${formatDateTime(m.last_touch_at)}` : ""}
+                        {m.next_touch_at ? ` · Next ${formatDateTime(m.next_touch_at)}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Select value={m.status} onValueChange={(v) => setMemberStatus(m, v)}>
+                        <SelectTrigger className="h-8 w-36"><SelectValue /></SelectTrigger>
+                        <SelectContent>{MEMBER_STATUSES.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <Button size="sm" variant="outline" disabled={!steps.length || m.current_step >= steps.length} onClick={() => logTouch(m)}>
+                        <CheckCircle2 className="mr-1 h-4 w-4" /> Log touch
+                      </Button>
+                      <Button size="icon" variant="ghost" className="text-destructive"
+                        onClick={async () => { await supabase.from("campaign_members").delete().eq("id", m.id); load(); }}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-border p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Accountability</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="outline">{trail.length} action{trail.length === 1 ? "" : "s"}</Badge>
+                        {overdue && <Badge variant="outline" className="border-destructive text-destructive">Follow-up overdue</Badge>}
+                        <Button size="sm" variant="ghost" onClick={() => setOpenTrail(expanded ? null : m.id)}>
+                          {expanded ? "Hide trail" : "Show full trail"}
+                        </Button>
+                      </div>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Last action {trail[0] ? `${personName(trail[0].assigned_to)} · ${formatDateTime(trail[0].completed_at || trail[0].created_at)}` : "— none yet"}
+                    </p>
+                    {expanded && (
+                      <div className="mt-3 space-y-2">
+                        {!trail.length && <p className="text-xs text-muted-foreground">No actions recorded for this contact yet.</p>}
+                        {trail.map((a) => (
+                          <div key={a.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2 text-xs last:border-0 last:pb-0">
+                            <span>
+                              <span className="font-medium">{a.subject}</span>
+                              <span className="text-muted-foreground"> · {a.type.replace("_", " ")} · {personName(a.assigned_to)}</span>
+                            </span>
+                            <span className={a.completed_at ? "text-muted-foreground" : "text-accent"}>
+                              {a.completed_at ? `Done ${formatDateTime(a.completed_at)}` : a.due_at ? `Due ${formatDateTime(a.due_at)}` : `Created ${formatDateTime(a.created_at)}`}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </TabsContent>
 
         <TabsContent value="sequence" className="mt-4 space-y-3">
@@ -215,22 +292,64 @@ export default function CampaignDetail() {
           </Dialog>
 
           {!steps.length && <p className="text-sm text-muted-foreground">No steps yet. Add the touches you want to run in order.</p>}
-          {steps.map((s, i) => (
-            <Card key={s.id}>
-              <CardHeader className="pb-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <CardTitle className="font-heading text-base">{i + 1}. {s.subject}</CardTitle>
-                  <Badge variant="outline">{CHANNEL_LABELS[s.channel] || s.channel}</Badge>
-                  <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" /> Day {s.day_offset}</Badge>
-                  <Button size="icon" variant="ghost" className="ml-auto text-destructive"
-                    onClick={async () => { await supabase.from("campaign_steps").delete().eq("id", s.id); load(); }}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardHeader>
-              {s.body && <CardContent className="whitespace-pre-wrap text-sm text-muted-foreground">{s.body}</CardContent>}
-            </Card>
-          ))}
+          {steps.map((s, i) => {
+            const r = stepReport(i, s);
+            return (
+              <Card key={s.id}>
+                <CardHeader className="pb-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <CardTitle className="font-heading text-base">{i + 1}. {s.subject}</CardTitle>
+                    <Badge variant="outline">{CHANNEL_LABELS[s.channel] || s.channel}</Badge>
+                    <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" /> Day {s.day_offset}</Badge>
+                    <div className="ml-auto flex items-center gap-2">
+                      <WhatsAppStepDialog
+                        campaignName={campaign.name}
+                        step={s}
+                        stepIndex={i}
+                        members={members}
+                        accounts={accounts}
+                        onDone={load}
+                      />
+                      <ScheduleStepDialog
+                        campaign={campaign}
+                        step={s}
+                        stepIndex={i}
+                        members={members}
+                        accounts={accounts}
+                        onDone={load}
+                      />
+
+                      <Button size="icon" variant="ghost" className="text-destructive"
+                        onClick={async () => { await supabase.from("campaign_steps").delete().eq("id", s.id); load(); }}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {s.body && <p className="whitespace-pre-wrap text-sm text-muted-foreground">{s.body}</p>}
+
+                  <div className="rounded-lg border border-border p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Follow-up report</p>
+                      <span className="text-xs text-muted-foreground">{r.done} of {r.total} past this step · {r.pct}%</span>
+                    </div>
+                    <Progress value={r.pct} className="mt-2 h-2" />
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                      <div><p className="text-muted-foreground">Completed</p><p className="font-medium">{r.completed}</p></div>
+                      <div><p className="text-muted-foreground">Waiting here</p><p className="font-medium">{r.atStep}</p></div>
+                      <div><p className="text-muted-foreground">Due now</p><p className={`font-medium ${r.dueNow ? "text-destructive" : ""}`}>{r.dueNow}</p></div>
+                      <div><p className="text-muted-foreground">Scheduled</p><p className="font-medium">{r.scheduled}</p></div>
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Last sent {r.lastAt ? formatDateTime(r.lastAt) : "—"}
+                      {r.owners.length ? ` · Responsible: ${r.owners.map(personName).join(", ")}` : " · Responsible: unassigned"}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </TabsContent>
       </Tabs>
     </div>

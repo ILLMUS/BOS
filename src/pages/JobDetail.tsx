@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { canEditStage } from "@/lib/authority";
+import { canEditStage, canEditQuoteStage } from "@/lib/authority";
+import { notifyQuoteEvent } from "@/lib/quoteNotifications";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,8 @@ import QuotationPrepForm from "@/components/stages/QuotationPrepForm";
 import InvoicingForm from "@/components/stages/InvoicingForm";
 import { detectFinanceForm } from "@/lib/stageForms";
 import { fetchJobPartyDetails, type JobPartyDetails } from "@/lib/clientDetails";
+import ClientApprovalPanel from "@/components/jobs/ClientApprovalPanel";
+import { needsClientApproval, type ClientDecision } from "@/lib/clientApproval";
 
 
 import SlaTimer from "@/components/sla/SlaTimer";
@@ -47,6 +50,7 @@ interface JobRow {
   template_id: string | null;
   template_version: number | null;
   tracking_token: string | null;
+  client_access_code: string | null;
 }
 
 interface JobStageRow {
@@ -180,6 +184,7 @@ export default function JobDetail() {
       setDirty(false);
     }
     setQuoteConfirmed(false);
+    setClientDecision(null);
     setShowReject(false);
     setRejectionReason("");
     if (!current.sop_stage_id) {
@@ -229,9 +234,20 @@ export default function JobDetail() {
   }, [current?.primary_owner_id, current?.secondary_owner_id]);
 
   // Chain of command: only the assignee of this step, a manager or the board may edit it.
-  const canEdit = canEditStage(authority, current ?? null, user?.id);
+  // Exception: quotation steps are collaborative — any workspace member may draft,
+  // edit and send the quote, while approval stays with approvers (canApprove).
+  const canApprove = canEditStage(authority, current ?? null, user?.id);
+  const isQuoteStep = financeForm === "quote";
+  const canEdit =
+    canApprove || (isQuoteStep && canEditQuoteStage(authority, current ?? null, user?.id));
   const isStepOpen = !!current && current.status !== "locked" && current.status !== "approved";
   const lockedByAuthority = isStepOpen && !canEdit;
+
+  // Client sign-off: steps named "… approval / sign-off / acceptance" belong to the
+  // client. The team can only advance them once the client approves from their link.
+  const [clientDecision, setClientDecision] = useState<ClientDecision | null>(null);
+  const isClientApprovalStep = needsClientApproval(current?.stage_name);
+  const awaitingClient = isClientApprovalStep && clientDecision?.decision !== "approved";
 
   const missingRequired = useMemo(() => {
     return fields
@@ -325,6 +341,14 @@ export default function JobDetail() {
       await persist();
       setDirty(false);
       toast.success("Progress saved");
+      if (isQuoteStep && quoteConfirmed && !canApprove && job && current) {
+        void notifyQuoteEvent(
+          job.id,
+          "ready_for_approval",
+          `Quotation ready for approval on ${job.job_number}`,
+          `${job.client_name}: "${current.stage_name}" was completed and is waiting for approval.`,
+        );
+      }
       await fetchJob();
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
@@ -394,6 +418,14 @@ export default function JobDetail() {
         action: "stage_rejected",
         details: { stage_name: current.stage_name, rejection_reason: rejectionReason },
       });
+      if (isQuoteStep) {
+        void notifyQuoteEvent(
+          job.id,
+          "rejected",
+          `Quotation rejected on ${job.job_number}`,
+          `${job.client_name}: "${current.stage_name}" was rejected. Reason: ${rejectionReason.trim()}`,
+        );
+      }
       toast.success("Step rejected");
       setShowReject(false);
       await fetchJob();
@@ -673,27 +705,43 @@ export default function JobDetail() {
                         Preview &amp; send PDF
                       </Button>
                     )}
-                    <Button
-                      onClick={handleApprove}
-                      disabled={approving || ((financeForm === "quote") && !quoteConfirmed)}
-                      className="bg-success text-success-foreground hover:bg-success/90"
-                    >
-                      {approving ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Check className="mr-2 h-4 w-4" />
-                      )}
-                      Approve &amp; Advance
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowReject((v) => !v)}
-                      className="border-destructive text-destructive hover:bg-destructive/10"
-                    >
-                      <X className="mr-2 h-4 w-4" />
-                      Reject
-                    </Button>
+                    {canApprove && (
+                      <>
+                        <Button
+                          onClick={handleApprove}
+                          disabled={approving || awaitingClient || ((financeForm === "quote") && !quoteConfirmed)}
+                          className="bg-success text-success-foreground hover:bg-success/90"
+                        >
+                          {approving ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Check className="mr-2 h-4 w-4" />
+                          )}
+                          Approve &amp; Advance
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowReject((v) => !v)}
+                          className="border-destructive text-destructive hover:bg-destructive/10"
+                        >
+                          <X className="mr-2 h-4 w-4" />
+                          Reject
+                        </Button>
+                      </>
+                    )}
                   </div>
+                  {isQuoteStep && !canApprove && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      You can prepare and send this quotation. Final approval stays with the
+                      assigned owner, a manager or the board.
+                    </p>
+                  )}
+                  {awaitingClient && canApprove && (
+                    <p className="mt-2 text-xs text-warning">
+                      This step needs the client's own approval first — send them the tracking link
+                      and their client ID from the panel on the right.
+                    </p>
+                  )}
                   {(financeForm === "quote") && !quoteConfirmed && (
                     <p className="mt-2 text-xs text-muted-foreground">
                       Confirm the quote above before approving this step.
@@ -703,7 +751,7 @@ export default function JobDetail() {
               )}
 
 
-              {showReject && (
+              {showReject && canApprove && (
                 <div className="space-y-3 rounded border border-destructive/30 p-4">
                   <Label>Reason for rejection *</Label>
                   <Textarea
@@ -723,6 +771,20 @@ export default function JobDetail() {
               )}
             </CardContent>
           </Card>
+
+          {isClientApprovalStep && current.status !== "locked" && (
+            <ClientApprovalPanel
+              key={current.id}
+              jobNumber={job.job_number}
+              clientName={job.client_name}
+              clientPhone={job.client_phone}
+              stageId={current.id}
+              stageName={current.stage_name || `Step ${stageIndex + 1}`}
+              trackingToken={job.tracking_token}
+              clientCode={job.client_access_code}
+              onDecision={setClientDecision}
+            />
+          )}
 
           <Card>
             <CardHeader>

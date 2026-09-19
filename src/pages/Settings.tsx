@@ -6,6 +6,7 @@ import NotificationTestPanel from "@/components/settings/NotificationTestPanel";
 import ProfileSettings from "@/components/settings/ProfileSettings";
 import AppearanceSettings from "@/components/settings/AppearanceSettings";
 import SecuritySettings from "@/components/settings/SecuritySettings";
+import BusinessBrandingCard from "@/components/config/BusinessBrandingCard";
 
 export default function Settings() {
   const { isAdmin, hasRole } = useAuth();
@@ -25,6 +26,7 @@ export default function Settings() {
         <TabsList className="w-full justify-start overflow-x-auto">
           <TabsTrigger value="account">Account</TabsTrigger>
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
+          {showAdmin && <TabsTrigger value="branding">Branding</TabsTrigger>}
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           {showAdmin && <TabsTrigger value="admin">Admin</TabsTrigger>}
@@ -36,6 +38,11 @@ export default function Settings() {
         <TabsContent value="appearance" className="mt-4">
           <AppearanceSettings />
         </TabsContent>
+        {showAdmin && (
+          <TabsContent value="branding" className="mt-4">
+            <BusinessBrandingCard />
+          </TabsContent>
+        )}
         <TabsContent value="notifications" className="mt-4 space-y-6">
           <NotificationPreferences />
           <NotificationTestPanel />

@@ -115,6 +115,18 @@ export default function PortalAccess() {
                     <span className="text-muted-foreground"> · {j.client_name}</span>
                   </p>
                   <p className="truncate text-xs text-muted-foreground">{j.tracking_token ? linkFor(j.tracking_token) : "No portal link"}</p>
+                  {j.tracking_token && (
+                    <button
+                      type="button"
+                      className="mt-1 text-xs text-muted-foreground underline underline-offset-2"
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(j.client_access_code || "");
+                        toast.success("Client ID copied");
+                      }}
+                    >
+                      Client ID: <span className="font-medium tracking-[0.2em]">{j.client_access_code || "—"}</span>
+                    </button>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant={j.tracking_token ? "outline" : "secondary"}>{j.tracking_token ? "Active" : "Revoked"}</Badge>

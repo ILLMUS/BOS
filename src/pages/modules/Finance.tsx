@@ -24,6 +24,9 @@ import ExpenseDialog from "@/components/finance/ExpenseDialog";
 import ExternalDocDialog from "@/components/finance/ExternalDocDialog";
 import WorkedExamples from "@/components/finance/WorkedExamples";
 import LedgerTab from "@/components/finance/LedgerTab";
+import ReconciliationTab from "@/components/finance/ReconciliationTab";
+import { reconcileAllJobs } from "@/lib/jobReconcile";
+import { useMismatchAlerts } from "@/hooks/useMismatchAlerts";
 
 
 function Kpi({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: "positive" | "negative" }) {
@@ -80,6 +83,12 @@ export default function Finance() {
   const [deletingDoc, setDeletingDoc] = useState<ExternalDoc | null>(null);
 
   const trend = useMemo(() => monthlyRevenue(fin.payments, fin.expenses), [fin.payments, fin.expenses]);
+  const reconcileInput = useMemo(() => ({
+    jobs: fin.jobs, quotes: fin.quotes, invoices: fin.invoices, payments: fin.payments,
+    variations: fin.variations, expenses: fin.expenses, receipts: fin.receipts,
+  }), [fin.jobs, fin.quotes, fin.invoices, fin.payments, fin.variations, fin.expenses, fin.receipts]);
+  const reconcile = useMemo(() => reconcileAllJobs(reconcileInput), [reconcileInput]);
+  useMismatchAlerts(reconcile, !fin.loading);
   const peak = Math.max(1, ...trend.map((t) => Math.max(t.received, t.spent)));
   const jobNumber = (id: string | null) => fin.jobs.find((j) => j.id === id)?.job_number;
 
@@ -175,6 +184,18 @@ export default function Finance() {
         </div>
       ) : (
         <>
+          {reconcile.errors + reconcile.warnings > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm">
+              <span>
+                {reconcile.errors > 0 && <strong>{reconcile.errors} job{reconcile.errors === 1 ? "" : "s"} with figures that do not match</strong>}
+                {reconcile.errors > 0 && reconcile.warnings > 0 && " · "}
+                {reconcile.warnings > 0 && `${reconcile.warnings} job${reconcile.warnings === 1 ? "" : "s"} worth a second look`}
+                {" — quote, invoice and money received disagree."}
+              </span>
+              <span className="text-xs text-muted-foreground">Open the Checks tab for the detail.</span>
+            </div>
+          )}
+
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <Kpi label="Quoted" value={formatMoney(t.quoted)} hint={`${fin.quotes.length} quote${fin.quotes.length === 1 ? "" : "s"} synced`} />
             <Kpi label="Invoiced" value={formatMoney(t.invoiced)} hint={`${fin.invoices.length} invoice${fin.invoices.length === 1 ? "" : "s"}`} />
@@ -191,6 +212,12 @@ export default function Finance() {
               <TabsTrigger value="payments">Payments</TabsTrigger>
               <TabsTrigger value="expenses">Expenses</TabsTrigger>
               <TabsTrigger value="accounting">Accounting</TabsTrigger>
+              <TabsTrigger value="checks">
+                Checks
+                {reconcile.errors + reconcile.warnings > 0 && (
+                  <Badge variant="destructive" className="ml-2">{reconcile.errors + reconcile.warnings}</Badge>
+                )}
+              </TabsTrigger>
               <TabsTrigger value="examples">Examples</TabsTrigger>
 
             </TabsList>
@@ -347,6 +374,10 @@ export default function Finance() {
 
             <TabsContent value="accounting" className="mt-4">
               <LedgerTab />
+            </TabsContent>
+
+            <TabsContent value="checks" className="mt-4">
+              <ReconciliationTab {...reconcileInput} />
             </TabsContent>
           </Tabs>
 

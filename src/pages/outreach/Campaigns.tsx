@@ -11,8 +11,11 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
+import { toast as sonner } from "sonner";
 import { formatDate } from "@/lib/crm";
-import { Loader2, Megaphone, Plus } from "lucide-react";
+import { Loader2, Megaphone, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { useDeferredDelete } from "@/hooks/useDeferredDelete";
+import { autosaveLabel, clearDraft, readDraft, useDraft } from "@/hooks/useAutosave";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Campaign = Tables<"campaigns">;
@@ -23,6 +26,9 @@ export const CHANNEL_LABELS: Record<string, string> = {
 };
 export const CAMPAIGN_STATUSES = ["draft", "active", "paused", "completed"] as const;
 
+const EMPTY_FORM = { name: "", description: "", channel: "email", goal: "", start_date: "" };
+const DRAFT_KEY = "draft:new-campaign";
+
 export default function Campaigns() {
   const { orgId, user } = useAuth();
   const [rows, setRows] = useState<Campaign[]>([]);
@@ -30,7 +36,12 @@ export default function Campaigns() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: "", description: "", channel: "email", goal: "", start_date: "" });
+  const [showTrash, setShowTrash] = useState(false);
+  const [form, setForm] = useState(() => readDraft(DRAFT_KEY, EMPTY_FORM));
+  const { remove } = useDeferredDelete();
+
+  useDraft(DRAFT_KEY, form, open);
+  const draftSaved = open && form.name.trim().length > 0;
 
   const load = async () => {
     const [c, m] = await Promise.all([
@@ -44,6 +55,39 @@ export default function Campaigns() {
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
+
+  const live = rows.filter((c) => !c.deleted_at);
+  const trashed = rows.filter((c) => c.deleted_at);
+
+  const trashCampaign = (c: Campaign) =>
+    remove({
+      id: c.id,
+      label: c.name,
+      onRemove: async () => {
+        await supabase.from("campaigns").update({ deleted_at: new Date().toISOString() }).eq("id", c.id);
+        setRows((p) => p.map((r) => (r.id === c.id ? { ...r, deleted_at: new Date().toISOString() } : r)));
+      },
+      onRestore: async () => {
+        await supabase.from("campaigns").update({ deleted_at: null }).eq("id", c.id);
+        setRows((p) => p.map((r) => (r.id === c.id ? { ...r, deleted_at: null } : r)));
+      },
+      onCommit: async () => {
+        await supabase.from("campaigns").delete().eq("id", c.id);
+        setRows((p) => p.filter((r) => r.id !== c.id));
+      },
+    });
+
+  const restoreCampaign = async (c: Campaign) => {
+    await supabase.from("campaigns").update({ deleted_at: null }).eq("id", c.id);
+    setRows((p) => p.map((r) => (r.id === c.id ? { ...r, deleted_at: null } : r)));
+    sonner.success(`“${c.name}” restored`);
+  };
+
+  const deleteForever = async (c: Campaign) => {
+    await supabase.from("campaigns").delete().eq("id", c.id);
+    setRows((p) => p.filter((r) => r.id !== c.id));
+    sonner.success("Deleted permanently");
+  };
 
   const create = async () => {
     if (!form.name.trim() || !orgId) return;
@@ -61,9 +105,11 @@ export default function Campaigns() {
     setSaving(false);
     if (error) return toast({ title: "Could not create campaign", description: error.message, variant: "destructive" });
     setOpen(false);
-    setForm({ name: "", description: "", channel: "email", goal: "", start_date: "" });
+    clearDraft(DRAFT_KEY);
+    setForm(EMPTY_FORM);
     load();
   };
+
 
   return (
     <div className="space-y-6">
@@ -91,7 +137,10 @@ export default function Campaigns() {
               <div className="space-y-1"><Label>Description</Label>
                 <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="sm:justify-between">
+              <span className="self-center text-xs text-muted-foreground">
+                {draftSaved ? "Draft kept on this device" : autosaveLabel("idle")}
+              </span>
               <Button onClick={create} disabled={saving || !form.name.trim()}>
                 {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />} Create
               </Button>
@@ -100,12 +149,42 @@ export default function Campaigns() {
         </Dialog>
       </div>
 
+      {trashed.length > 0 && (
+        <Button variant="ghost" size="sm" className="text-xs" onClick={() => setShowTrash((v) => !v)}>
+          <Trash2 className="mr-1 h-3 w-3" />
+          {showTrash ? "Hide trash" : `Trash (${trashed.length})`}
+        </Button>
+      )}
+
+      {showTrash && (
+        <div className="grid gap-2">
+          {trashed.map((c) => (
+            <Card key={c.id} className="border-dashed">
+              <CardContent className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="font-medium text-muted-foreground line-through">{c.name}</p>
+                  <p className="text-xs text-muted-foreground">In trash — restore it or delete it for good.</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => restoreCampaign(c)}>
+                    <RotateCcw className="mr-1 h-3 w-3" /> Restore
+                  </Button>
+                  <Button size="sm" variant="ghost" className="text-destructive" onClick={() => deleteForever(c)}>
+                    Delete forever
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
       {loading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-        : !rows.length ? (
+        : !live.length ? (
           <Card><CardContent className="p-6 text-sm text-muted-foreground">No campaigns yet.</CardContent></Card>
         ) : (
           <div className="grid gap-3">
-            {rows.map((c) => (
+            {live.map((c) => (
               <Card key={c.id} className="transition hover:border-primary/40">
                 <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
@@ -119,12 +198,18 @@ export default function Campaigns() {
                       {members[c.id] || 0} in list{c.goal ? ` · Goal: ${c.goal}` : ""}{c.start_date ? ` · Starts ${formatDate(c.start_date)}` : ""}
                     </p>
                   </div>
-                  <Button size="sm" variant="outline" asChild><Link to={`/outreach/campaigns/${c.id}`}>Open</Link></Button>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" asChild><Link to={`/outreach/campaigns/${c.id}`}>Open</Link></Button>
+                    <Button size="sm" variant="ghost" className="text-destructive" onClick={() => trashCampaign(c)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
           </div>
         )}
+
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useCopy } from "@/contexts/CopyContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,23 +12,33 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { friendlyJobCreateError, logJobCreateFailure } from "@/lib/jobErrors";
+import { clearDraft, readDraft, useDraft } from "@/hooks/useAutosave";
+
+const JOB_DRAFT_KEY = "draft:new-job";
+
+
 
 export default function NewJob() {
   const navigate = useNavigate();
   const { user, hasRole, orgId } = useAuth();
+  const { t, phrase } = useCopy();
   const isSuperAdmin = hasRole("super_admin");
   const [submitting, setSubmitting] = useState(false);
   const [templates, setTemplates] = useState<
     { id: string; name: string; is_active: boolean; version: number; is_locked: boolean }[]
   >([]);
   const [templateId, setTemplateId] = useState<string>("");
-  const [form, setForm] = useState({
-    client_name: "",
-    client_phone: "",
-    client_email: "",
-    client_location: "",
-    service_type: "",
-  });
+  const [form, setForm] = useState(() =>
+    readDraft(JOB_DRAFT_KEY, {
+      client_name: "",
+      client_phone: "",
+      client_email: "",
+      client_location: "",
+      service_type: "",
+    }),
+  );
+  useDraft(JOB_DRAFT_KEY, form);
+
 
   useEffect(() => {
     if (!orgId) return;
@@ -77,6 +88,7 @@ export default function NewJob() {
         details: { client_name: form.client_name, template_id: templateId },
       });
 
+      clearDraft(JOB_DRAFT_KEY);
       toast.success("Job created successfully");
       navigate(`/jobs/${jobId}`);
     } catch (err: any) {
@@ -99,17 +111,17 @@ export default function NewJob() {
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h1 className="font-heading text-2xl font-bold">New Job</h1>
+        <h1 className="font-heading text-2xl font-bold">New {t("work_item")}</h1>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Client Information</CardTitle>
+          <CardTitle className="text-lg">{t("client")} information</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label>Workflow *</Label>
+              <Label>{t("workflow")} *</Label>
               {templates.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No workflows yet — build one in the SOP Builder first.

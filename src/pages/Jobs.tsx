@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PageSkeleton from "@/components/ui/page-skeleton";
 import { supabase } from "@/integrations/supabase/client";
+import { useCopy } from "@/contexts/CopyContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { AUTHORITY } from "@/lib/authority";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +25,7 @@ interface JobProgress {
 export default function Jobs() {
   const navigate = useNavigate();
   const { hasRole, authority, user } = useAuth();
+  const { t, phrase } = useCopy();
   const isSuperAdmin = hasRole("super_admin");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [progress, setProgress] = useState<Record<string, JobProgress>>({});
@@ -99,14 +101,14 @@ export default function Jobs() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="font-heading text-2xl font-bold">Jobs</h1>
+        <h1 className="font-heading text-2xl font-bold">{t("work_items")}</h1>
         {isSuperAdmin && (
           <Button
             onClick={() => navigate("/jobs/new")}
             className="bg-accent text-accent-foreground hover:bg-accent/90"
           >
             <Plus className="mr-2 h-4 w-4" />
-            New Job
+            New {t("work_item")}
           </Button>
         )}
       </div>
@@ -114,7 +116,7 @@ export default function Jobs() {
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search by client or job number..."
+          placeholder={phrase("Search by client or job number...")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9"

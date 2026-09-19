@@ -4,170 +4,770 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =========================================================
+   RST BUSINESS OS
+   GLOBAL VISUAL SYSTEM
+   ========================================================= */
+
 @layer base {
   :root {
-    --background: 220 33% 97%;
-    --foreground: 224 40% 12%;
+    /* -----------------------------------------------------
+       CORE SURFACE
+       ----------------------------------------------------- */
 
-    --card: 0 0% 100%;
-    --card-foreground: 224 40% 12%;
+    --background: 220 32% 6%;
+    --foreground: 210 25% 94%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 224 40% 12%;
+    --card: 220 28% 9%;
+    --card-foreground: 210 25% 94%;
 
-    --primary: 258 88% 58%;
-    --primary-foreground: 0 0% 100%;
+    --popover: 220 28% 9%;
+    --popover-foreground: 210 25% 94%;
 
-    --secondary: 220 24% 95%;
-    --secondary-foreground: 224 40% 12%;
+    /* -----------------------------------------------------
+       PRIMARY — ELECTRIC CYAN
+       ----------------------------------------------------- */
 
-    --muted: 220 24% 96%;
-    --muted-foreground: 220 12% 46%;
+    --primary: 187 92% 55%;
+    --primary-foreground: 220 32% 6%;
 
-    --accent: 258 88% 58%;
-    --accent-foreground: 0 0% 100%;
+    /* -----------------------------------------------------
+       SECONDARY
+       ----------------------------------------------------- */
 
-    --destructive: 0 79% 63%;
+    --secondary: 220 25% 12%;
+    --secondary-foreground: 210 25% 92%;
+
+    /* -----------------------------------------------------
+       MUTED
+       ----------------------------------------------------- */
+
+    --muted: 220 24% 11%;
+    --muted-foreground: 215 14% 52%;
+
+    /* -----------------------------------------------------
+       ACCENT
+       ----------------------------------------------------- */
+
+    --accent: 217 92% 60%;
+    --accent-foreground: 210 25% 96%;
+
+    /* -----------------------------------------------------
+       SYSTEM STATES
+       ----------------------------------------------------- */
+
+    --destructive: 0 78% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 152 62% 42%;
-    --success-foreground: 0 0% 100%;
+    --success: 158 72% 48%;
+    --success-foreground: 220 32% 6%;
 
-    --warning: 38 94% 55%;
-    --warning-foreground: 0 0% 100%;
+    --warning: 38 94% 58%;
+    --warning-foreground: 220 32% 6%;
 
-    --locked: 220 14% 80%;
-    --locked-foreground: 220 12% 46%;
+    --locked: 220 14% 28%;
+    --locked-foreground: 215 14% 55%;
 
-    --border: 220 22% 91%;
-    --input: 220 22% 91%;
-    --ring: 258 88% 58%;
+    /* -----------------------------------------------------
+       BORDERS / INPUTS
+       ----------------------------------------------------- */
 
-    --radius: 0.75rem;
+    --border: 215 22% 17%;
+    --input: 215 22% 17%;
+    --ring: 187 92% 55%;
 
-    --gradient-yellow: 45 95% 55%;
-    --gradient-green: 152 62% 45%;
-    --gradient-white: 0 0% 100%;
-    --edge-glow: radial-gradient(
-      ellipse at 0% 0%,
-      hsl(var(--gradient-yellow) / 0.58) 0%,
-      transparent 55%
-    ),
-    radial-gradient(
-      ellipse at 100% 0%,
-      hsl(var(--gradient-green) / 0.52) 0%,
-      transparent 55%
-    ),
-    radial-gradient(
-      ellipse at 100% 100%,
-      hsl(var(--primary) / 0.34) 0%,
-      transparent 55%
-    );
+    --radius: 0.7rem;
 
-    --chart-1: 221 83% 58%;
-    --chart-2: 152 62% 42%;
-    --chart-3: 38 94% 55%;
-    --chart-4: 22 90% 58%;
-    --chart-5: 0 79% 63%;
-    --chart-6: 258 88% 58%;
+    /* -----------------------------------------------------
+       RST BRAND COLORS
+       ----------------------------------------------------- */
 
-    --sidebar-background: 236 44% 10%;
-    --sidebar-foreground: 220 25% 88%;
-    --sidebar-primary: 258 88% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 236 34% 17%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 236 30% 20%;
-    --sidebar-ring: 258 88% 60%;
+    --rst-cyan: 187 92% 55%;
+    --rst-blue: 217 92% 60%;
+    --rst-violet: 265 85% 68%;
+    --rst-emerald: 158 72% 48%;
+    --rst-amber: 38 94% 58%;
+    --rst-red: 0 78% 60%;
+    --rst-pink: 330 80% 68%;
+
+    /* -----------------------------------------------------
+       CHART SYSTEM
+       ----------------------------------------------------- */
+
+    --chart-1: 187 92% 55%;
+    --chart-2: 217 92% 60%;
+    --chart-3: 265 85% 68%;
+    --chart-4: 158 72% 48%;
+    --chart-5: 38 94% 58%;
+    --chart-6: 330 80% 68%;
+
+    /* -----------------------------------------------------
+       GRADIENTS
+       ----------------------------------------------------- */
+
+    --gradient-cyan: 187 92% 55%;
+    --gradient-blue: 217 92% 60%;
+    --gradient-violet: 265 85% 68%;
+    --gradient-emerald: 158 72% 48%;
+
+    /* -----------------------------------------------------
+       APPLICATION EDGE GLOW
+       Very subtle — not a giant page background.
+       ----------------------------------------------------- */
+
+    --edge-glow:
+      radial-gradient(
+        ellipse at 0% 0%,
+        hsl(var(--rst-cyan) / 0.045) 0%,
+        transparent 42%
+      ),
+      radial-gradient(
+        ellipse at 100% 0%,
+        hsl(var(--rst-blue) / 0.035) 0%,
+        transparent 42%
+      ),
+      radial-gradient(
+        ellipse at 100% 100%,
+        hsl(var(--rst-violet) / 0.025) 0%,
+        transparent 45%
+      );
+
+    /* -----------------------------------------------------
+       SIDEBAR
+       ----------------------------------------------------- */
+
+    --sidebar-background: 222 34% 5%;
+    --sidebar-foreground: 215 20% 78%;
+
+    --sidebar-primary: 187 92% 55%;
+    --sidebar-primary-foreground: 220 32% 6%;
+
+    --sidebar-accent: 220 27% 10%;
+    --sidebar-accent-foreground: 210 25% 94%;
+
+    --sidebar-border: 215 22% 13%;
+    --sidebar-ring: 187 92% 55%;
   }
+
+  /* =======================================================
+     DARK MODE
+     ======================================================= */
 
   .dark {
-    --background: 236 30% 8%;
-    --foreground: 220 25% 92%;
+    --background: 220 32% 6%;
+    --foreground: 210 25% 94%;
 
-    --card: 236 28% 12%;
-    --card-foreground: 220 25% 92%;
+    --card: 220 28% 9%;
+    --card-foreground: 210 25% 94%;
 
-    --popover: 236 28% 12%;
-    --popover-foreground: 220 25% 92%;
+    --popover: 220 28% 9%;
+    --popover-foreground: 210 25% 94%;
 
-    --primary: 258 88% 65%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 187 92% 55%;
+    --primary-foreground: 220 32% 6%;
 
-    --secondary: 236 24% 18%;
-    --secondary-foreground: 220 25% 92%;
+    --secondary: 220 25% 12%;
+    --secondary-foreground: 210 25% 92%;
 
-    --muted: 236 24% 17%;
-    --muted-foreground: 220 12% 62%;
+    --muted: 220 24% 11%;
+    --muted-foreground: 215 14% 52%;
 
-    --accent: 258 88% 65%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 217 92% 60%;
+    --accent-foreground: 210 25% 96%;
 
-    --destructive: 0 70% 55%;
+    --destructive: 0 78% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 152 55% 45%;
-    --success-foreground: 0 0% 100%;
+    --success: 158 72% 48%;
+    --success-foreground: 220 32% 6%;
 
-    --warning: 38 90% 58%;
-    --warning-foreground: 0 0% 100%;
+    --warning: 38 94% 58%;
+    --warning-foreground: 220 32% 6%;
 
-    --locked: 236 16% 32%;
-    --locked-foreground: 220 12% 55%;
+    --locked: 220 14% 28%;
+    --locked-foreground: 215 14% 55%;
 
-    --border: 236 22% 20%;
-    --input: 236 22% 20%;
-    --ring: 258 88% 65%;
+    --border: 215 22% 17%;
+    --input: 215 22% 17%;
+    --ring: 187 92% 55%;
 
-    --chart-1: 221 83% 62%;
-    --chart-2: 152 55% 45%;
-    --chart-3: 38 90% 58%;
-    --chart-4: 22 85% 60%;
-    --chart-5: 0 70% 62%;
-    --chart-6: 258 88% 65%;
+    --chart-1: 187 92% 55%;
+    --chart-2: 217 92% 60%;
+    --chart-3: 265 85% 68%;
+    --chart-4: 158 72% 48%;
+    --chart-5: 38 94% 58%;
+    --chart-6: 330 80% 68%;
 
-    --sidebar-background: 236 44% 7%;
-    --sidebar-foreground: 220 25% 86%;
-    --sidebar-primary: 258 88% 62%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 236 34% 14%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 236 30% 16%;
-    --sidebar-ring: 258 88% 62%;
+    --sidebar-background: 222 34% 5%;
+    --sidebar-foreground: 215 20% 78%;
 
-    --edge-glow: radial-gradient(
-      ellipse at 0% 0%,
-      hsl(var(--gradient-yellow) / 0.14) 0%,
-      transparent 45%
-    ),
-    radial-gradient(
-      ellipse at 100% 0%,
-      hsl(var(--gradient-green) / 0.12) 0%,
-      transparent 45%
-    ),
-    radial-gradient(
-      ellipse at 100% 100%,
-      hsl(var(--gradient-white) / 0.08) 0%,
-      transparent 45%
-    );
+    --sidebar-primary: 187 92% 55%;
+    --sidebar-primary-foreground: 220 32% 6%;
+
+    --sidebar-accent: 220 27% 10%;
+    --sidebar-accent-foreground: 210 25% 94%;
+
+    --sidebar-border: 215 22% 13%;
+    --sidebar-ring: 187 92% 55%;
+
+    --edge-glow:
+      radial-gradient(
+        ellipse at 0% 0%,
+        hsl(var(--rst-cyan) / 0.045) 0%,
+        transparent 42%
+      ),
+      radial-gradient(
+        ellipse at 100% 0%,
+        hsl(var(--rst-blue) / 0.035) 0%,
+        transparent 42%
+      ),
+      radial-gradient(
+        ellipse at 100% 100%,
+        hsl(var(--rst-violet) / 0.025) 0%,
+        transparent 45%
+      );
   }
 }
+
+/* =========================================================
+   GLOBAL BASE
+   ========================================================= */
 
 @layer base {
   * {
     @apply border-border;
   }
 
+  html {
+    background: hsl(var(--background));
+  }
+
   body {
     @apply bg-background text-foreground font-body antialiased;
+
+    background-image: var(--edge-glow);
+    background-attachment: fixed;
+
+    min-height: 100vh;
+
+    font-feature-settings:
+      "cv02",
+      "cv03",
+      "cv04",
+      "cv11";
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-heading;
+    letter-spacing: -0.025em;
   }
 
-  /* Slim scrollbars for the app shell */
-  .thin-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
-  .thin-scroll::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.3); border-radius: 9999px; }
-  .thin-scroll::-webkit-scrollbar-track { background: transparent; }
+  button,
+  input,
+  textarea,
+  select {
+    font-family: inherit;
+  }
+
+  ::selection {
+    background: hsl(var(--rst-cyan) / 0.22);
+    color: hsl(var(--foreground));
+  }
+
+  /* -------------------------------------------------------
+     Scrollbars
+     ------------------------------------------------------- */
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color:
+      hsl(var(--muted-foreground) / 0.24)
+      transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: hsl(
+      var(--muted-foreground) / 0.24
+    );
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: hsl(
+      var(--rst-cyan) / 0.35
+    );
+  }
+
+  /* -------------------------------------------------------
+     Slim application scrollbar
+     ------------------------------------------------------- */
+
+  .thin-scroll::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  .thin-scroll::-webkit-scrollbar-thumb {
+    background: hsl(
+      var(--muted-foreground) / 0.24
+    );
+    border-radius: 9999px;
+  }
+
+  .thin-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* =========================================================
+   RST BUSINESS OS COMPONENT LANGUAGE
+   ========================================================= */
+
+@layer components {
+  /* -------------------------------------------------------
+     FUTURISTIC CARD
+     ------------------------------------------------------- */
+
+  .rst-card {
+    @apply rounded-xl border;
+
+    background:
+      linear-gradient(
+        180deg,
+        hsl(var(--foreground) / 0.018),
+        transparent
+      ),
+      hsl(var(--card) / 0.72);
+
+    border-color:
+      hsl(var(--border) / 0.72);
+
+    box-shadow: none;
+
+    transition:
+      border-color 180ms ease,
+      background 180ms ease,
+      transform 180ms ease;
+  }
+
+  .rst-card:hover {
+    border-color:
+      hsl(var(--rst-cyan) / 0.14);
+
+    background:
+      linear-gradient(
+        180deg,
+        hsl(var(--foreground) / 0.025),
+        transparent
+      ),
+      hsl(var(--card) / 0.82);
+  }
+
+  /* -------------------------------------------------------
+     COMPLETELY TRANSPARENT CARD
+     Useful for dashboard layouts where cards should float.
+     ------------------------------------------------------- */
+
+  .rst-card-flat {
+    @apply rounded-xl border;
+
+    background: transparent;
+
+    border-color:
+      hsl(var(--border) / 0.65);
+
+    box-shadow: none;
+  }
+
+  /* -------------------------------------------------------
+     KPI / METRIC NUMBER
+     ------------------------------------------------------- */
+
+  .rst-metric {
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    color: hsl(var(--foreground));
+  }
+
+  /* -------------------------------------------------------
+     MICRO LABEL
+     ------------------------------------------------------- */
+
+  .rst-label {
+    font-size: 8px;
+    line-height: 1.2;
+
+    font-weight: 600;
+
+    letter-spacing: 0.13em;
+
+    text-transform: uppercase;
+
+    color:
+      hsl(var(--muted-foreground) / 0.85);
+  }
+
+  /* -------------------------------------------------------
+     SUBTLE SYSTEM LABEL
+     ------------------------------------------------------- */
+
+  .rst-caption {
+    font-size: 9px;
+    line-height: 1.45;
+
+    color:
+      hsl(var(--muted-foreground));
+  }
+
+  /* -------------------------------------------------------
+     LIVE INDICATOR
+     ------------------------------------------------------- */
+
+  .rst-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+
+    font-size: 7px;
+    font-weight: 600;
+
+    letter-spacing: 0.14em;
+
+    text-transform: uppercase;
+
+    color:
+      hsl(var(--rst-emerald));
+  }
+
+  .rst-live::before {
+    content: "";
+
+    width: 5px;
+    height: 5px;
+
+    border-radius: 999px;
+
+    background:
+      hsl(var(--rst-emerald));
+
+    box-shadow:
+      0 0 7px
+      hsl(var(--rst-emerald) / 0.65);
+
+    animation:
+      rst-pulse 2s ease-in-out infinite;
+  }
+
+  /* -------------------------------------------------------
+     CYAN GLOW
+     ------------------------------------------------------- */
+
+  .rst-glow-cyan {
+    box-shadow:
+      0 0 24px
+      hsl(var(--rst-cyan) / 0.08);
+  }
+
+  .rst-glow-blue {
+    box-shadow:
+      0 0 24px
+      hsl(var(--rst-blue) / 0.08);
+  }
+
+  .rst-glow-violet {
+    box-shadow:
+      0 0 24px
+      hsl(var(--rst-violet) / 0.08);
+  }
+
+  /* -------------------------------------------------------
+     CHART CONTAINER
+     ------------------------------------------------------- */
+
+  .rst-chart {
+    position: relative;
+
+    overflow: hidden;
+
+    border-radius: 0.75rem;
+
+    background:
+      linear-gradient(
+        180deg,
+        hsl(var(--foreground) / 0.014),
+        transparent
+      );
+
+    border:
+      1px solid
+      hsl(var(--border) / 0.55);
+  }
+
+  /* -------------------------------------------------------
+     GRID OVERLAY FOR DATA VISUALIZATION
+     ------------------------------------------------------- */
+
+  .rst-chart-grid {
+    background-image:
+      linear-gradient(
+        hsl(var(--foreground) / 0.025) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        90deg,
+        hsl(var(--foreground) / 0.025) 1px,
+        transparent 1px
+      );
+
+    background-size:
+      32px 32px;
+  }
+
+  /* -------------------------------------------------------
+     DATA LINE GLOW
+     ------------------------------------------------------- */
+
+  .rst-data-glow {
+    filter:
+      drop-shadow(
+        0 0 5px
+        hsl(var(--rst-cyan) / 0.5)
+      );
+  }
+
+  /* -------------------------------------------------------
+     STATUS DOTS
+     ------------------------------------------------------- */
+
+  .rst-dot-cyan {
+    width: 5px;
+    height: 5px;
+
+    border-radius: 999px;
+
+    background: hsl(var(--rst-cyan));
+
+    box-shadow:
+      0 0 8px
+      hsl(var(--rst-cyan) / 0.55);
+  }
+
+  .rst-dot-blue {
+    width: 5px;
+    height: 5px;
+
+    border-radius: 999px;
+
+    background: hsl(var(--rst-blue));
+
+    box-shadow:
+      0 0 8px
+      hsl(var(--rst-blue) / 0.55);
+  }
+
+  .rst-dot-violet {
+    width: 5px;
+    height: 5px;
+
+    border-radius: 999px;
+
+    background: hsl(var(--rst-violet));
+
+    box-shadow:
+      0 0 8px
+      hsl(var(--rst-violet) / 0.55);
+  }
+
+  .rst-dot-green {
+    width: 5px;
+    height: 5px;
+
+    border-radius: 999px;
+
+    background: hsl(var(--rst-emerald));
+
+    box-shadow:
+      0 0 8px
+      hsl(var(--rst-emerald) / 0.55);
+  }
+
+  /* -------------------------------------------------------
+     FUTURISTIC INPUT
+     ------------------------------------------------------- */
+
+  .rst-input {
+    @apply rounded-lg border;
+
+    background:
+      hsl(var(--background) / 0.72);
+
+    border-color:
+      hsl(var(--border));
+
+    color:
+      hsl(var(--foreground));
+
+    transition:
+      border-color 160ms ease,
+      box-shadow 160ms ease,
+      background 160ms ease;
+  }
+
+  .rst-input:focus {
+    border-color:
+      hsl(var(--rst-cyan) / 0.45);
+
+    box-shadow:
+      0 0 0 2px
+      hsl(var(--rst-cyan) / 0.07);
+  }
+}
+
+/* =========================================================
+   ANIMATIONS
+   ========================================================= */
+
+@keyframes rst-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.9);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes rst-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes rst-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes rst-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes rst-scan {
+  from {
+    transform: translateY(-100%);
+  }
+
+  to {
+    transform: translateY(300%);
+  }
+}
+
+@keyframes rst-speed {
+  from {
+    stroke-dashoffset: 1000;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* =========================================================
+   ANIMATION UTILITIES
+   ========================================================= */
+
+.rst-animate {
+  animation:
+    rst-fade-up
+    500ms
+    cubic-bezier(0.16, 1, 0.3, 1)
+    both;
+}
+
+.rst-fade-in {
+  animation:
+    rst-fade-in
+    350ms
+    ease-out
+    both;
+}
+
+.rst-scale-in {
+  animation:
+    rst-scale-in
+    350ms
+    cubic-bezier(0.16, 1, 0.3, 1)
+    both;
+}
+
+.rst-delay-1 {
+  animation-delay: 50ms;
+}
+
+.rst-delay-2 {
+  animation-delay: 100ms;
+}
+
+.rst-delay-3 {
+  animation-delay: 150ms;
+}
+
+.rst-delay-4 {
+  animation-delay: 200ms;
+}
+
+.rst-delay-5 {
+  animation-delay: 250ms;
+}
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

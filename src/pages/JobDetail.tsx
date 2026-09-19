@@ -4,12 +4,27 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { canEditStage, canEditQuoteStage } from "@/lib/authority";
 import { notifyQuoteEvent } from "@/lib/quoteNotifications";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Check, CloudOff, Copy, ExternalLink, FileDown, Loader2, RotateCcw, Save, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  CloudOff,
+  Copy,
+  ExternalLink,
+  FileDown,
+  Loader2,
+  RotateCcw,
+  Save,
+  X,
+  User,
+  Phone,
+  Mail,
+  MapPin,
+  Briefcase,
+  ShieldAlert,
+} from "lucide-react";
 import { toast } from "sonner";
 import DynamicPipelineBar from "@/components/sop/DynamicPipelineBar";
 import DynamicStageForm from "@/components/sop/DynamicStageForm";
@@ -19,7 +34,6 @@ import { detectFinanceForm } from "@/lib/stageForms";
 import { fetchJobPartyDetails, type JobPartyDetails } from "@/lib/clientDetails";
 import ClientApprovalPanel from "@/components/jobs/ClientApprovalPanel";
 import { needsClientApproval, type ClientDecision } from "@/lib/clientApproval";
-
 
 import SlaTimer from "@/components/sla/SlaTimer";
 import SlaDeadlineEditor from "@/components/sla/SlaDeadlineEditor";
@@ -74,6 +88,33 @@ interface StageMeta {
   requires_approval: boolean;
   primaryRole: string | null;
   secondaryRole: string | null;
+}
+
+/* -------------------------------------------------------
+   FUTURISTIC GLASS CONTAINER
+------------------------------------------------------- */
+function GlassCard({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`
+        relative overflow-hidden rounded-[14px]
+        border border-white/[0.085]
+        bg-[#10151d]/95
+        shadow-[0_18px_60px_rgba(0,0,0,0.24)]
+        backdrop-blur-md
+        ${className}
+      `}
+    >
+      <div className="pointer-events-none absolute -right-20 -top-20 h-40 w-40 rounded-full bg-cyan-500/[0.035] blur-3xl" />
+      {children}
+    </div>
+  );
 }
 
 export default function JobDetail() {
@@ -140,14 +181,13 @@ export default function JobDetail() {
 
   const current = useMemo(() => stages.find((s) => s.id === selectedId) ?? null, [stages, selectedId]);
 
-  // Steps named quotation / invoice / receipt always open the built-in finance
-  // form instead of the generic dynamic field form.
+  // Steps named quotation / invoice / receipt always open the built-in finance form
   const financeForm = useMemo(
     () => detectFinanceForm(current?.stage_name),
-    [current?.stage_name],
+    [current?.stage_name]
   );
 
-  // Client + business details captured earlier in the workflow, reused by every money form.
+  // Client + business details captured earlier in the workflow
   const [party, setParty] = useState<JobPartyDetails | null>(null);
   useEffect(() => {
     if (!job?.id) { setParty(null); return; }
@@ -156,21 +196,11 @@ export default function JobDetail() {
     return () => { alive = false; };
   }, [job?.id]);
 
-  // Finance records for quotation / invoice / receipt steps are created and kept
-  // up to date by the database itself the moment a step is saved, so every job —
-  // including ones nobody opens — shows matching totals in Finance.
-
-
-
-
-
-
-  // Load stage form state + its custom fields
+  // Load stage form state + custom fields
   useEffect(() => {
     if (!current) return;
     const draft = readDraft(current.id);
     if (draft && !draft.synced) {
-      // Unsent local edits win — the crew filled this in without signal.
       setFormData(draft.formData || {});
       setNotes(draft.notes || "");
       setRestoredDraft(draft);
@@ -217,7 +247,7 @@ export default function JobDetail() {
       );
   }, [current?.id]);
 
-  // Resolve the people currently responsible for this stage
+  // Resolve stage owners
   useEffect(() => {
     const ids = [current?.primary_owner_id, current?.secondary_owner_id].filter(Boolean) as string[];
     if (ids.length === 0) return;
@@ -233,9 +263,6 @@ export default function JobDetail() {
       );
   }, [current?.primary_owner_id, current?.secondary_owner_id]);
 
-  // Chain of command: only the assignee of this step, a manager or the board may edit it.
-  // Exception: quotation steps are collaborative — any workspace member may draft,
-  // edit and send the quote, while approval stays with approvers (canApprove).
   const canApprove = canEditStage(authority, current ?? null, user?.id);
   const isQuoteStep = financeForm === "quote";
   const canEdit =
@@ -243,8 +270,6 @@ export default function JobDetail() {
   const isStepOpen = !!current && current.status !== "locked" && current.status !== "approved";
   const lockedByAuthority = isStepOpen && !canEdit;
 
-  // Client sign-off: steps named "… approval / sign-off / acceptance" belong to the
-  // client. The team can only advance them once the client approves from their link.
   const [clientDecision, setClientDecision] = useState<ClientDecision | null>(null);
   const isClientApprovalStep = needsClientApproval(current?.stage_name);
   const awaitingClient = isClientApprovalStep && clientDecision?.decision !== "approved";
@@ -273,7 +298,6 @@ export default function JobDetail() {
     setRestoredDraft(null);
   };
 
-  // Keep a local copy of every keystroke so nothing is lost if signal drops.
   useEffect(() => {
     if (!current || !dirty || !canEdit) return;
     const t = setTimeout(() => {
@@ -289,7 +313,6 @@ export default function JobDetail() {
     return () => clearTimeout(t);
   }, [current?.id, current?.job_id, formData, notes, dirty, canEdit]);
 
-  // Push anything captured offline as soon as the connection returns.
   useEffect(() => {
     if (!online) {
       wasOnline.current = false;
@@ -346,7 +369,7 @@ export default function JobDetail() {
           job.id,
           "ready_for_approval",
           `Quotation ready for approval on ${job.job_number}`,
-          `${job.client_name}: "${current.stage_name}" was completed and is waiting for approval.`,
+          `${job.client_name}: "${current.stage_name}" was completed and is waiting for approval.`
         );
       }
       await fetchJob();
@@ -423,7 +446,7 @@ export default function JobDetail() {
           job.id,
           "rejected",
           `Quotation rejected on ${job.job_number}`,
-          `${job.client_name}: "${current.stage_name}" was rejected. Reason: ${rejectionReason.trim()}`,
+          `${job.client_name}: "${current.stage_name}" was rejected. Reason: ${rejectionReason.trim()}`
         );
       }
       toast.success("Step rejected");
@@ -436,25 +459,43 @@ export default function JobDetail() {
     }
   };
 
-  if (loading) return <JobDetailSkeleton />;
+  const getStageStatusBadge = (status: string) => {
+    switch (status) {
+      case "approved":
+        return "border-emerald-400/30 bg-emerald-400/10 text-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.15)]";
+      case "rejected":
+        return "border-rose-400/30 bg-rose-400/10 text-rose-300 shadow-[0_0_12px_rgba(244,63,94,0.15)]";
+      case "locked":
+        return "border-slate-700 bg-slate-800/80 text-slate-400";
+      default:
+        return "border-cyan-400/30 bg-cyan-400/10 text-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.15)]";
+    }
+  };
 
+  if (loading) return <JobDetailSkeleton />;
   if (legacy) return <LegacyJobDetail />;
-  if (!job) return <div className="py-20 text-center text-muted-foreground">Job not found.</div>;
+  if (!job) return <div className="py-20 text-center text-slate-500">Job not found.</div>;
 
   const stageIndex = current ? [...stages].sort((a, b) => a.position - b.position).findIndex((s) => s.id === current.id) : 0;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/jobs")}>
+    <div className="space-y-5 text-slate-200">
+      {/* HEADER BAR */}
+      <div className="flex items-center gap-3 border-b border-white/[0.065] pb-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => navigate("/jobs")}
+          className="h-8.5 w-8.5 rounded-lg border border-white/[0.085] bg-[#10151d] text-slate-400 hover:bg-white/[0.05] hover:text-white"
+        >
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="font-heading text-2xl font-bold">
-            {job.job_number} — {job.client_name}
+          <h1 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
+            <span className="font-mono text-cyan-400">{job.job_number}</span> — {job.client_name}
           </h1>
-          <p className="text-sm text-muted-foreground">
-            {job.service_type || "No service type"} • {job.client_location || "No location"}
+          <p className="mt-0.5 text-[11px] text-slate-400">
+            {job.service_type || "No service type"} <span className="text-slate-600">•</span> {job.client_location || "No location"}
             {job.template_version ? ` • Workflow v${job.template_version}` : ""}
           </p>
         </div>
@@ -466,384 +507,411 @@ export default function JobDetail() {
 
       <JobLifecycleTrail jobId={job.id} />
 
-      <Card>
-        <CardContent className="p-4">
-          <DynamicPipelineBar
-            stages={stages
-              .slice()
-              .sort((a, b) => a.position - b.position)
-              .map((s) => ({
-                id: s.id,
-                name: s.stage_name || `Step ${s.position + 1}`,
-                status: s.status,
-                position: s.position,
-              }))}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-          />
-        </CardContent>
-      </Card>
+      {/* PIPELINE BAR CARD */}
+      <GlassCard className="p-4">
+        <DynamicPipelineBar
+          stages={stages
+            .slice()
+            .sort((a, b) => a.position - b.position)
+            .map((s) => ({
+              id: s.id,
+              name: s.stage_name || `Step ${s.position + 1}`,
+              status: s.status,
+              position: s.position,
+            }))}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+        />
+      </GlassCard>
 
       {current && (
-        <div className="grid gap-6 lg:grid-cols-3">
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="font-heading text-lg">
-                  Step {stageIndex + 1}: {current.stage_name}
-                </CardTitle>
-                <Badge
-                  variant="outline"
-                  className={
-                    current.status === "approved"
-                      ? "border-success text-success"
-                      : current.status === "rejected"
-                      ? "border-destructive text-destructive"
-                      : current.status === "locked"
-                      ? "border-locked text-locked-foreground"
-                      : "border-accent text-accent"
-                  }
-                >
-                  {current.status.toUpperCase()}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {(stageMeta?.description ||
-                stageMeta?.primaryRole ||
-                current.primary_owner_id ||
-                stageMeta?.requires_approval) && (
-                <div className="space-y-2 rounded border border-border bg-muted/40 p-3">
-                  {stageMeta?.description && (
-                    <p className="text-sm text-muted-foreground">{stageMeta.description}</p>
-                  )}
-                  <div className="flex flex-wrap gap-2 text-xs">
-                    <Badge variant="outline">
-                      Responsible: {stageMeta?.primaryRole || "Unassigned role"}
-                      {current.primary_owner_id && ownerNames[current.primary_owner_id]
-                        ? ` · ${ownerNames[current.primary_owner_id]}`
-                        : ""}
-                    </Badge>
-                    {(stageMeta?.secondaryRole || current.secondary_owner_id) && (
-                      <Badge variant="outline">
-                        Backup: {stageMeta?.secondaryRole || "Role"}
-                        {current.secondary_owner_id && ownerNames[current.secondary_owner_id]
-                          ? ` · ${ownerNames[current.secondary_owner_id]}`
-                          : ""}
-                      </Badge>
-                    )}
-                    {stageMeta?.requires_approval && (
-                      <Badge variant="outline" className="border-accent text-accent">
-                        Approval gate
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              )}
+        <div className="grid gap-5 lg:grid-cols-3">
+          {/* MAIN STAGE DETAILS & FORM */}
+          <GlassCard className="p-5 lg:col-span-2 space-y-5">
+            {/* STAGE TITLE BAR */}
+            <div className="flex items-center justify-between border-b border-white/[0.065] pb-3.5">
+              <h2 className="text-sm font-bold text-white tracking-tight">
+                Step {stageIndex + 1}: {current.stage_name}
+              </h2>
+              <span
+                className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${getStageStatusBadge(
+                  current.status
+                )}`}
+              >
+                {current.status}
+              </span>
+            </div>
 
-              <div className="space-y-2">
-                <SlaTimer
-                  slaDeadlineHours={current.sla_deadline_hours}
-                  slaStartedAt={current.sla_started_at}
-                  status={current.status as any}
-                />
-                {isAdmin && (
-                  <SlaDeadlineEditor
-                    stageId={current.id}
-                    currentHours={current.sla_deadline_hours}
-                    onUpdated={(h) =>
-                      setStages((prev) =>
-                        prev.map((s) => (s.id === current.id ? { ...s, sla_deadline_hours: h } : s))
-                      )
-                    }
-                  />
+            {/* STAGE META / ROLES */}
+            {(stageMeta?.description ||
+              stageMeta?.primaryRole ||
+              current.primary_owner_id ||
+              stageMeta?.requires_approval) && (
+              <div className="space-y-2 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-[11px]">
+                {stageMeta?.description && (
+                  <p className="text-slate-400">{stageMeta.description}</p>
                 )}
-              </div>
-
-              {financeForm === "quote" ? (
-                <QuotationPrepForm
-                  formData={formData}
-                  onChange={(d) => {
-                    setFormData(d);
-                    setDirty(true);
-                  }}
-                  readOnly={!canEdit}
-                  jobId={job.id}
-                  stageId={current.id}
-                  onQuoteConfirm={setQuoteConfirmed}
-                  pdfOpen={pdfOpen}
-                  onPdfOpenChange={setPdfOpen}
-                />
-              ) : financeForm ? (
-                <InvoicingForm
-                  mode={financeForm}
-                  formData={formData}
-                  onChange={(d) => {
-                    setFormData(d);
-                    setDirty(true);
-                  }}
-                  readOnly={!canEdit}
-                  jobId={job.id}
-                  stageId={current.id}
-                />
-              ) : (
-                <DynamicStageForm
-                  fields={fields}
-                  formData={formData}
-                  onChange={(d) => {
-                    setFormData(d);
-                    setDirty(true);
-                  }}
-                  readOnly={!canEdit}
-                  jobId={job.id}
-                />
-              )}
-
-
-              {canEdit ? (
-                <div className="space-y-2 border-t border-border pt-4">
-                  <Label>Step Notes</Label>
-                  <Textarea
-                    value={notes}
-                    onChange={(e) => {
-                      setNotes(e.target.value);
-                      setDirty(true);
-                    }}
-                    placeholder="Add notes, observations or comments..."
-                    rows={3}
-                  />
+                <div className="flex flex-wrap gap-2 text-[10px]">
+                  <span className="inline-flex items-center rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 font-medium text-slate-300">
+                    Responsible: {stageMeta?.primaryRole || "Unassigned role"}
+                    {current.primary_owner_id && ownerNames[current.primary_owner_id]
+                      ? ` · ${ownerNames[current.primary_owner_id]}`
+                      : ""}
+                  </span>
+                  {(stageMeta?.secondaryRole || current.secondary_owner_id) && (
+                    <span className="inline-flex items-center rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 font-medium text-slate-300">
+                      Backup: {stageMeta?.secondaryRole || "Role"}
+                      {current.secondary_owner_id && ownerNames[current.secondary_owner_id]
+                        ? ` · ${ownerNames[current.secondary_owner_id]}`
+                        : ""}
+                    </span>
+                  )}
+                  {stageMeta?.requires_approval && (
+                    <span className="inline-flex items-center rounded-md border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 font-semibold text-cyan-300">
+                      Approval gate
+                    </span>
+                  )}
                 </div>
-              ) : (
-                current.notes && (
-                  <div className="space-y-1 border-t border-border pt-4">
-                    <Label className="text-muted-foreground">Notes</Label>
-                    <p className="text-sm">{current.notes}</p>
-                  </div>
-                )
-              )}
+              </div>
+            )}
 
-              {lockedByAuthority && (
-                <div className="rounded border border-warning/40 bg-warning/5 p-3">
-                  <p className="text-sm font-medium">Read-only for you</p>
-                  <p className="text-sm text-muted-foreground">
-                    This step is assigned to someone else. Only its owner, a manager or the
-                    administration board can fill it in.
+            {/* SLA SECTION */}
+            <div className="space-y-2">
+              <SlaTimer
+                slaDeadlineHours={current.sla_deadline_hours}
+                slaStartedAt={current.sla_started_at}
+                status={current.status as any}
+              />
+              {isAdmin && (
+                <SlaDeadlineEditor
+                  stageId={current.id}
+                  currentHours={current.sla_deadline_hours}
+                  onUpdated={(h) =>
+                    setStages((prev) =>
+                      prev.map((s) => (s.id === current.id ? { ...s, sla_deadline_hours: h } : s))
+                    )
+                  }
+                />
+              )}
+            </div>
+
+            {/* DYNAMIC FORMS */}
+            {financeForm === "quote" ? (
+              <QuotationPrepForm
+                formData={formData}
+                onChange={(d) => {
+                  setFormData(d);
+                  setDirty(true);
+                }}
+                readOnly={!canEdit}
+                jobId={job.id}
+                stageId={current.id}
+                onQuoteConfirm={setQuoteConfirmed}
+                pdfOpen={pdfOpen}
+                onPdfOpenChange={setPdfOpen}
+              />
+            ) : financeForm ? (
+              <InvoicingForm
+                mode={financeForm}
+                formData={formData}
+                onChange={(d) => {
+                  setFormData(d);
+                  setDirty(true);
+                }}
+                readOnly={!canEdit}
+                jobId={job.id}
+                stageId={current.id}
+              />
+            ) : (
+              <DynamicStageForm
+                fields={fields}
+                formData={formData}
+                onChange={(d) => {
+                  setFormData(d);
+                  setDirty(true);
+                }}
+                readOnly={!canEdit}
+                jobId={job.id}
+              />
+            )}
+
+            {/* NOTES */}
+            {canEdit ? (
+              <div className="space-y-2 border-t border-white/[0.085] pt-4">
+                <Label className="text-[11px] font-semibold text-slate-300">Step Notes</Label>
+                <Textarea
+                  value={notes}
+                  onChange={(e) => {
+                    setNotes(e.target.value);
+                    setDirty(true);
+                  }}
+                  placeholder="Add notes, observations or comments..."
+                  rows={3}
+                  className="rounded-xl border-white/[0.08] bg-[#10151d] text-[11px] text-slate-200 placeholder:text-slate-500 focus:border-cyan-400/30 focus:ring-1 focus:ring-cyan-400/30"
+                />
+              </div>
+            ) : (
+              current.notes && (
+                <div className="space-y-1 border-t border-white/[0.085] pt-4">
+                  <Label className="text-[11px] font-semibold text-slate-400">Notes</Label>
+                  <p className="text-[11px] text-slate-300">{current.notes}</p>
+                </div>
+              )
+            )}
+
+            {/* WARNING & OFFLINE NOTICES */}
+            {lockedByAuthority && (
+              <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-[11px] text-amber-300 shadow-[0_0_12px_rgba(251,191,36,0.1)]">
+                <p className="font-semibold">Read-only for you</p>
+                <p className="mt-0.5 text-amber-300/80">
+                  This step is assigned to someone else. Only its owner, a manager or the administration board can fill it in.
+                </p>
+              </div>
+            )}
+
+            {!online && (
+              <div className="flex items-start gap-2.5 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-[11px] text-amber-300 shadow-[0_0_12px_rgba(251,191,36,0.1)]">
+                <CloudOff className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" />
+                <div>
+                  <p className="font-semibold">You are offline</p>
+                  <p className="mt-0.5 text-amber-300/80">
+                    Keep filling this step in — everything is stored on this device and syncs automatically once you have signal again.
                   </p>
                 </div>
-              )}
-
-              {!online && (
-                <div className="flex items-start gap-2 rounded border border-warning/40 bg-warning/5 p-3">
-                  <CloudOff className="mt-0.5 h-4 w-4 text-warning" />
-                  <div>
-                    <p className="text-sm font-medium">You are offline</p>
-                    <p className="text-sm text-muted-foreground">
-                      Keep filling this step in — everything is stored on this device and syncs
-                      automatically once you have signal again.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {restoredDraft && (
-                <div className="flex items-start gap-2 rounded border border-accent/40 bg-accent/5 p-3">
-                  <RotateCcw className="mt-0.5 h-4 w-4 text-accent" />
-                  <div>
-                    <p className="text-sm font-medium">Restored offline draft</p>
-                    <p className="text-sm text-muted-foreground">
-                      Unsent changes from {formatDraftAge(restoredDraft.savedAt)} were loaded back
-                      into this step.{" "}
-                      <button
-                        type="button"
-                        className="underline underline-offset-2"
-                        onClick={() => {
-                          clearDraft(restoredDraft.stageId);
-                          setFormData((current.form_data as Record<string, any>) || {});
-                          setNotes(current.notes || "");
-                          setRestoredDraft(null);
-                          setQueuedOffline(false);
-                          setDirty(false);
-                        }}
-                      >
-                        Discard draft
-                      </button>
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {current.rejection_reason && (
-                <div className="rounded border border-destructive/30 bg-destructive/5 p-3">
-                  <p className="text-sm font-medium text-destructive">Rejection reason:</p>
-                  <p className="text-sm">{current.rejection_reason}</p>
-                </div>
-              )}
-
-              {canEdit && (
-                <div className="sticky bottom-2 z-10 mt-2 rounded-lg border border-border/70 bg-background/80 p-3 shadow-[0_0_0_1px_hsl(var(--accent)/0.12)] backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                  <div className="mb-2 flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
-                    Stage controls
-                  </div>
-                  <div className="flex flex-wrap gap-3">
-                    <Button onClick={handleSave} disabled={saving || !dirty} variant="outline">
-                      {saving ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Save className="mr-2 h-4 w-4" />
-                      )}
-                      {online ? "Save Progress" : "Save on this device"}
-                    </Button>
-                    {queuedOffline && (
-                      <span className="self-center text-xs text-warning">
-                        Draft waiting to sync
-                      </span>
-                    )}
-                    {(financeForm === "quote") && (
-                      <Button variant="outline" onClick={() => setPdfOpen(true)} className="border-accent/60 text-accent hover:bg-accent/10">
-                        <FileDown className="mr-2 h-4 w-4" />
-                        Preview &amp; send PDF
-                      </Button>
-                    )}
-                    {canApprove && (
-                      <>
-                        <Button
-                          onClick={handleApprove}
-                          disabled={approving || awaitingClient || ((financeForm === "quote") && !quoteConfirmed)}
-                          className="bg-success text-success-foreground hover:bg-success/90"
-                        >
-                          {approving ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : (
-                            <Check className="mr-2 h-4 w-4" />
-                          )}
-                          Approve &amp; Advance
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => setShowReject((v) => !v)}
-                          className="border-destructive text-destructive hover:bg-destructive/10"
-                        >
-                          <X className="mr-2 h-4 w-4" />
-                          Reject
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                  {isQuoteStep && !canApprove && (
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      You can prepare and send this quotation. Final approval stays with the
-                      assigned owner, a manager or the board.
-                    </p>
-                  )}
-                  {awaitingClient && canApprove && (
-                    <p className="mt-2 text-xs text-warning">
-                      This step needs the client's own approval first — send them the tracking link
-                      and their client ID from the panel on the right.
-                    </p>
-                  )}
-                  {(financeForm === "quote") && !quoteConfirmed && (
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Confirm the quote above before approving this step.
-                    </p>
-                  )}
-                </div>
-              )}
-
-
-              {showReject && canApprove && (
-                <div className="space-y-3 rounded border border-destructive/30 p-4">
-                  <Label>Reason for rejection *</Label>
-                  <Textarea
-                    value={rejectionReason}
-                    onChange={(e) => setRejectionReason(e.target.value)}
-                    rows={3}
-                  />
-                  <Button
-                    onClick={handleReject}
-                    disabled={rejecting || !rejectionReason.trim()}
-                    variant="destructive"
-                  >
-                    {rejecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Confirm Rejection
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {isClientApprovalStep && current.status !== "locked" && (
-            <ClientApprovalPanel
-              key={current.id}
-              jobNumber={job.job_number}
-              clientName={job.client_name}
-              clientPhone={job.client_phone}
-              stageId={current.id}
-              stageName={current.stage_name || `Step ${stageIndex + 1}`}
-              trackingToken={job.tracking_token}
-              clientCode={job.client_access_code}
-              onDecision={setClientDecision}
-            />
-          )}
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-heading text-lg">Client Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div>
-                <p className="text-muted-foreground">Name</p>
-                <p className="font-medium">{job.client_name}</p>
               </div>
-              <div>
-                <p className="text-muted-foreground">Phone</p>
-                <p className="font-medium">{job.client_phone || "—"}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Email</p>
-                <p className="font-medium">{job.client_email || "—"}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Location</p>
-                <p className="font-medium">{job.client_location || "—"}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Service Type</p>
-                <p className="font-medium">{job.service_type || "—"}</p>
-              </div>
+            )}
 
-              {job.tracking_token && (
-                <div className="border-t border-border pt-3">
-                  <p className="text-muted-foreground">Client Tracking Link</p>
-                  <div className="mt-1 flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-xs"
+            {restoredDraft && (
+              <div className="flex items-start gap-2.5 rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-3 text-[11px] text-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.1)]">
+                <RotateCcw className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan-300" />
+                <div>
+                  <p className="font-semibold">Restored offline draft</p>
+                  <p className="mt-0.5 text-cyan-300/80">
+                    Unsent changes from {formatDraftAge(restoredDraft.savedAt)} were loaded back into this step.{" "}
+                    <button
+                      type="button"
+                      className="underline underline-offset-2 hover:text-cyan-200"
                       onClick={() => {
-                        navigator.clipboard.writeText(
-                          `${window.location.origin}/track?token=${job.tracking_token}`
-                        );
-                        toast.success("Tracking link copied!");
+                        clearDraft(restoredDraft.stageId);
+                        setFormData((current.form_data as Record<string, any>) || {});
+                        setNotes(current.notes || "");
+                        setRestoredDraft(null);
+                        setQueuedOffline(false);
+                        setDirty(false);
                       }}
                     >
-                      <Copy className="mr-1 h-3 w-3" /> Copy Link
-                    </Button>
+                      Discard draft
+                    </button>
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {current.rejection_reason && (
+              <div className="rounded-xl border border-rose-400/30 bg-rose-400/10 p-3 text-[11px] text-rose-300 shadow-[0_0_12px_rgba(244,63,94,0.1)]">
+                <p className="font-semibold text-rose-300">Rejection reason:</p>
+                <p className="mt-0.5 text-rose-300/80">{current.rejection_reason}</p>
+              </div>
+            )}
+
+            {/* STAGE CONTROLS */}
+            {canEdit && (
+              <div className="sticky bottom-2 z-10 mt-3 rounded-xl border border-white/[0.085] bg-[#10151d]/90 p-3.5 shadow-[0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-md">
+                <div className="mb-2.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                  Stage controls
+                </div>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <Button
+                    onClick={handleSave}
+                    disabled={saving || !dirty}
+                    className="h-8.5 rounded-lg border border-white/[0.1] bg-white/[0.04] px-3.5 text-[11px] font-semibold text-slate-200 hover:bg-white/[0.08] disabled:opacity-50"
+                  >
+                    {saving ? (
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Save className="mr-1.5 h-3.5 w-3.5" />
+                    )}
+                    {online ? "Save Progress" : "Save on this device"}
+                  </Button>
+
+                  {queuedOffline && (
+                    <span className="text-[10px] font-semibold text-amber-300">
+                      Draft waiting to sync
+                    </span>
+                  )}
+
+                  {financeForm === "quote" && (
                     <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-xs"
-                      onClick={() =>
-                        window.open(`${window.location.origin}/track?token=${job.tracking_token}`, "_blank")
-                      }
+                      onClick={() => setPdfOpen(true)}
+                      className="h-8.5 rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3.5 text-[11px] font-bold text-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.15)] hover:bg-cyan-400/20"
                     >
-                      <ExternalLink className="mr-1 h-3 w-3" /> Preview
+                      <FileDown className="mr-1.5 h-3.5 w-3.5" />
+                      Preview &amp; send PDF
                     </Button>
+                  )}
+
+                  {canApprove && (
+                    <>
+                      <Button
+                        onClick={handleApprove}
+                        disabled={approving || awaitingClient || (financeForm === "quote" && !quoteConfirmed)}
+                        className="h-8.5 rounded-lg border border-emerald-400/30 bg-emerald-400/20 px-3.5 text-[11px] font-bold text-emerald-300 shadow-[0_0_16px_rgba(52,211,153,0.2)] transition-all hover:bg-emerald-400 hover:text-slate-950 disabled:opacity-50"
+                      >
+                        {approving ? (
+                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Check className="mr-1.5 h-3.5 w-3.5" />
+                        )}
+                        Approve &amp; Advance
+                      </Button>
+
+                      <Button
+                        onClick={() => setShowReject((v) => !v)}
+                        className="h-8.5 rounded-lg border border-rose-400/30 bg-rose-400/10 px-3.5 text-[11px] font-bold text-rose-300 shadow-[0_0_12px_rgba(244,63,94,0.15)] hover:bg-rose-400/20"
+                      >
+                        <X className="mr-1.5 h-3.5 w-3.5" />
+                        Reject
+                      </Button>
+                    </>
+                  )}
+                </div>
+
+                {isQuoteStep && !canApprove && (
+                  <p className="mt-2 text-[10px] text-slate-400">
+                    You can prepare and send this quotation. Final approval stays with the assigned owner, a manager or the board.
+                  </p>
+                )}
+                {awaitingClient && canApprove && (
+                  <p className="mt-2 text-[10px] font-semibold text-amber-300">
+                    This step needs the client's own approval first — send them the tracking link and their client ID from the panel on the right.
+                  </p>
+                )}
+                {financeForm === "quote" && !quoteConfirmed && (
+                  <p className="mt-2 text-[10px] text-slate-400">
+                    Confirm the quote above before approving this step.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* REJECTION PANEL */}
+            {showReject && canApprove && (
+              <div className="space-y-3 rounded-xl border border-rose-400/30 bg-rose-400/5 p-4 text-[11px]">
+                <Label className="text-[11px] font-semibold text-rose-300">Reason for rejection *</Label>
+                <Textarea
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  rows={3}
+                  className="rounded-xl border-rose-400/30 bg-[#10151d] text-[11px] text-slate-200 placeholder:text-slate-500 focus:border-rose-400/50 focus:ring-1 focus:ring-rose-400/50"
+                />
+                <Button
+                  onClick={handleReject}
+                  disabled={rejecting || !rejectionReason.trim()}
+                  className="h-8.5 rounded-lg border border-rose-400/30 bg-rose-500 px-3.5 text-[11px] font-bold text-slate-950 shadow-[0_0_16px_rgba(244,63,94,0.2)] hover:bg-rose-400 disabled:opacity-50"
+                >
+                  {rejecting && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                  Confirm Rejection
+                </Button>
+              </div>
+            )}
+          </GlassCard>
+
+          {/* SIDEBAR PANELS */}
+          <div className="space-y-5">
+            {isClientApprovalStep && current.status !== "locked" && (
+              <ClientApprovalPanel
+                key={current.id}
+                jobNumber={job.job_number}
+                clientName={job.client_name}
+                clientPhone={job.client_phone}
+                stageId={current.id}
+                stageName={current.stage_name || `Step ${stageIndex + 1}`}
+                trackingToken={job.tracking_token}
+                clientCode={job.client_access_code}
+                onDecision={setClientDecision}
+              />
+            )}
+
+            <GlassCard className="p-5 space-y-4">
+              <div className="border-b border-white/[0.065] pb-3">
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                  Client Details
+                </h3>
+              </div>
+
+              <div className="space-y-3 text-[11px]">
+                <div className="flex items-start gap-2.5">
+                  <User className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  <div>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-wider">Name</p>
+                    <p className="font-semibold text-slate-100">{job.client_name}</p>
                   </div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+
+                <div className="flex items-start gap-2.5">
+                  <Phone className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  <div>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-wider">Phone</p>
+                    <p className="font-semibold text-slate-100">{job.client_phone || "—"}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  <div>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-wider">Email</p>
+                    <p className="font-semibold text-slate-100">{job.client_email || "—"}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  <div>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-wider">Location</p>
+                    <p className="font-semibold text-slate-100">{job.client_location || "—"}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <Briefcase className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  <div>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-wider">Service Type</p>
+                    <p className="font-semibold text-slate-100">{job.service_type || "—"}</p>
+                  </div>
+                </div>
+
+                {job.tracking_token && (
+                  <div className="border-t border-white/[0.085] pt-3">
+                    <p className="text-[10px] text-slate-400 uppercase tracking-wider">
+                      Client Tracking Link
+                    </p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <Button
+                        onClick={() => {
+                          navigator.clipboard.writeText(
+                            `${window.location.origin}/track?token=${job.tracking_token}`
+                          );
+                          toast.success("Tracking link copied!");
+                        }}
+                        className="h-7.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[10px] font-medium text-slate-200 hover:bg-white/[0.06]"
+                      >
+                        <Copy className="mr-1.5 h-3 w-3 text-cyan-400" /> Copy Link
+                      </Button>
+                      <Button
+                        onClick={() =>
+                          window.open(`${window.location.origin}/track?token=${job.tracking_token}`, "_blank")
+                        }
+                        className="h-7.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[10px] font-medium text-slate-200 hover:bg-white/[0.06]"
+                      >
+                        <ExternalLink className="mr-1.5 h-3 w-3 text-cyan-400" /> Preview
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </GlassCard>
+          </div>
         </div>
       )}
     </div>

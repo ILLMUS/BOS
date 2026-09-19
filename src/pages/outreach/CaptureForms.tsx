@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { Copy, ExternalLink, Loader2, Plus, Trash2 } from "lucide-react";
+import { Copy, ExternalLink, Loader2, Plus, Trash2, FileText } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type CaptureForm = Tables<"capture_forms">;
@@ -27,6 +26,33 @@ const DEFAULT_FIELDS: FieldDef[] = [
 
 const slugify = (s: string) =>
   s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "form";
+
+/* -------------------------------------------------------
+   FUTURISTIC GLASS CONTAINER
+------------------------------------------------------- */
+function GlassCard({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`
+        relative overflow-hidden rounded-[14px]
+        border border-white/[0.085]
+        bg-[#10151d]/95
+        shadow-[0_18px_60px_rgba(0,0,0,0.24)]
+        backdrop-blur-md
+        ${className}
+      `}
+    >
+      <div className="pointer-events-none absolute -right-20 -top-20 h-40 w-40 rounded-full bg-cyan-500/[0.035] blur-3xl" />
+      {children}
+    </div>
+  );
+}
 
 export default function CaptureForms() {
   const { orgId, user } = useAuth();
@@ -45,11 +71,16 @@ export default function CaptureForms() {
     ]);
     setRows(f.data || []);
     const c: Record<string, number> = {};
-    (s.data || []).forEach((r) => { c[r.form_id] = (c[r.form_id] || 0) + 1; });
+    (s.data || []).forEach((r) => {
+      c[r.form_id] = (c[r.form_id] || 0) + 1;
+    });
     setCounts(c);
     setLoading(false);
   };
-  useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    load();
+  }, []);
 
   const publicUrl = (slug: string) => `${window.location.origin}/f/${slug}`;
 
@@ -92,100 +123,186 @@ export default function CaptureForms() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="space-y-6 text-slate-200">
+      {/* HEADER BAR */}
+      <div className="flex flex-col gap-3 border-b border-white/[0.085] pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold">Lead capture forms</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-white">Lead capture forms</h1>
+          <p className="text-xs text-slate-400">
             Public forms that create an account, contact and lead automatically when someone enquires.
           </p>
         </div>
+
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button><Plus className="mr-1 h-4 w-4" /> New form</Button>
+            <Button className="h-9 rounded-lg bg-cyan-500 px-4 text-xs font-bold text-slate-950 shadow-[0_0_20px_rgba(34,211,238,0.2)] transition-all hover:bg-cyan-400">
+              <Plus className="mr-1.5 h-4 w-4" /> New form
+            </Button>
           </DialogTrigger>
-          <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
-            <DialogHeader><DialogTitle>New capture form</DialogTitle></DialogHeader>
-            <div className="space-y-3">
+
+          <DialogContent className="max-h-[85vh] overflow-y-auto border-white/[0.085] bg-[#10151d] text-slate-200 sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-white">New capture form</DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-3.5 text-xs">
               <div className="space-y-1">
-                <Label>Form name</Label>
-                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Website enquiry" />
+                <Label className="text-[11px] text-slate-300">Form name</Label>
+                <Input
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="Website enquiry"
+                  className="h-9 rounded-xl border-white/[0.08] bg-[#161c26] text-xs text-slate-200 placeholder:text-slate-500 focus:border-cyan-400/30 focus:ring-1 focus:ring-cyan-400/30"
+                />
               </div>
+
               <div className="space-y-1">
-                <Label>Intro text</Label>
-                <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Tell us about your project and we'll get back to you." />
+                <Label className="text-[11px] text-slate-300">Intro text</Label>
+                <Textarea
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  placeholder="Tell us about your project and we'll get back to you."
+                  rows={2}
+                  className="rounded-xl border-white/[0.08] bg-[#161c26] text-xs text-slate-200 placeholder:text-slate-500 focus:border-cyan-400/30 focus:ring-1 focus:ring-cyan-400/30"
+                />
               </div>
+
               <div className="space-y-1">
-                <Label>Source label</Label>
-                <Input value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} />
+                <Label className="text-[11px] text-slate-300">Source label</Label>
+                <Input
+                  value={form.source}
+                  onChange={(e) => setForm({ ...form, source: e.target.value })}
+                  className="h-9 rounded-xl border-white/[0.08] bg-[#161c26] text-xs text-slate-200 focus:border-cyan-400/30 focus:ring-1 focus:ring-cyan-400/30"
+                />
               </div>
+
               <div className="space-y-2">
-                <Label>Fields</Label>
-                {fields.map((f, i) => (
-                  <div key={f.key} className="flex items-center gap-2 rounded border p-2">
-                    <Input
-                      className="h-8"
-                      value={f.label}
-                      onChange={(e) => setFields(fields.map((x, xi) => (xi === i ? { ...x, label: e.target.value } : x)))}
-                    />
-                    <div className="flex shrink-0 items-center gap-2">
-                      <Switch
-                        checked={f.required}
-                        onCheckedChange={(v) => setFields(fields.map((x, xi) => (xi === i ? { ...x, required: v } : x)))}
+                <Label className="text-[11px] text-slate-300">Fields</Label>
+                <div className="space-y-2">
+                  {fields.map((f, i) => (
+                    <div
+                      key={f.key}
+                      className="flex items-center gap-2.5 rounded-xl border border-white/[0.08] bg-[#161c26]/60 p-2"
+                    >
+                      <Input
+                        className="h-7.5 rounded-lg border-white/[0.08] bg-[#10151d] text-xs text-slate-200 focus:border-cyan-400/30"
+                        value={f.label}
+                        onChange={(e) =>
+                          setFields(
+                            fields.map((x, xi) => (xi === i ? { ...x, label: e.target.value } : x))
+                          )
+                        }
                       />
-                      <span className="text-xs text-muted-foreground">Required</span>
+                      <div className="flex shrink-0 items-center gap-2 pr-1">
+                        <Switch
+                          checked={f.required}
+                          onCheckedChange={(v) =>
+                            setFields(
+                              fields.map((x, xi) => (xi === i ? { ...x, required: v } : x))
+                            )
+                          }
+                        />
+                        <span className="text-[11px] text-slate-400">Required</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
-            <DialogFooter>
-              <Button onClick={create} disabled={saving || !form.name.trim()}>
-                {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />} Create form
+
+            <DialogFooter className="border-t border-white/[0.085] pt-3">
+              <Button
+                onClick={create}
+                disabled={saving || !form.name.trim()}
+                className="h-8.5 rounded-lg bg-cyan-500 px-4 text-xs font-bold text-slate-950 shadow-[0_0_16px_rgba(34,211,238,0.2)] hover:bg-cyan-400 disabled:opacity-50"
+              >
+                {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />} Create form
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
+      {/* CARDS LIST */}
       {loading ? (
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+        </div>
       ) : !rows.length ? (
-        <Card><CardContent className="p-6 text-sm text-muted-foreground">No capture forms yet. Create one to collect enquiries from your website, WhatsApp bio or email signature.</CardContent></Card>
+        <GlassCard className="p-8 text-center">
+          <p className="text-xs text-slate-400">
+            No capture forms yet. Create one to collect enquiries from your website, WhatsApp bio or email signature.
+          </p>
+        </GlassCard>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {rows.map((r) => (
-            <Card key={r.id}>
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between gap-2">
-                  <CardTitle className="font-heading text-base">{r.name}</CardTitle>
-                  <Badge variant="outline">{counts[r.id] || 0} submissions</Badge>
+            <GlassCard key={r.id} className="p-4 transition-all hover:border-cyan-400/30">
+              <div className="space-y-3.5">
+                {/* HEADER */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-cyan-400 shrink-0" />
+                    <h3 className="text-sm font-bold text-white tracking-tight">{r.name}</h3>
+                  </div>
+                  <span className="inline-flex items-center rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2.5 py-0.5 text-[10px] font-bold text-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.15)] shrink-0">
+                    {counts[r.id] || 0} submissions
+                  </span>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                {r.description && <p className="text-muted-foreground">{r.description}</p>}
-                <div className="flex items-center gap-2 rounded border bg-muted/40 p-2">
-                  <code className="flex-1 truncate text-xs">{publicUrl(r.slug)}</code>
-                  <Button size="icon" variant="ghost" onClick={() => { navigator.clipboard.writeText(publicUrl(r.slug)); toast({ title: "Link copied" }); }}>
-                    <Copy className="h-4 w-4" />
+
+                {/* DESCRIPTION */}
+                {r.description && <p className="text-xs text-slate-400 line-clamp-2">{r.description}</p>}
+
+                {/* PUBLIC LINK BOX */}
+                <div className="flex items-center gap-1.5 rounded-xl border border-white/[0.08] bg-[#161c26]/80 p-1.5 pl-3">
+                  <code className="flex-1 truncate text-[11px] text-cyan-300/90 font-mono">
+                    {publicUrl(r.slug)}
+                  </code>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 rounded-lg text-slate-400 hover:bg-white/[0.06] hover:text-white"
+                    onClick={() => {
+                      navigator.clipboard.writeText(publicUrl(r.slug));
+                      toast({ title: "Link copied" });
+                    }}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
                   </Button>
-                  <Button size="icon" variant="ghost" asChild>
-                    <a href={publicUrl(r.slug)} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" /></a>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    asChild
+                    className="h-7 w-7 rounded-lg text-slate-400 hover:bg-white/[0.06] hover:text-white"
+                  >
+                    <a href={publicUrl(r.slug)} target="_blank" rel="noreferrer">
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
                   </Button>
                 </div>
-                <div className="flex flex-wrap items-center gap-4">
-                  <label className="flex items-center gap-2 text-xs">
-                    <Switch checked={r.is_active} onCheckedChange={() => toggleActive(r)} /> Active
-                  </label>
-                  <label className="flex items-center gap-2 text-xs">
-                    <Switch checked={r.auto_create_lead} onCheckedChange={() => toggleRouting(r)} /> Auto-route to lead
-                  </label>
-                  <Button size="sm" variant="ghost" className="ml-auto text-destructive" onClick={() => remove(r.id)}>
-                    <Trash2 className="h-4 w-4" />
+
+                {/* FOOTER CONTROLS */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-white/[0.06]">
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 text-[11px] text-slate-300 cursor-pointer">
+                      <Switch checked={r.is_active} onCheckedChange={() => toggleActive(r)} /> Active
+                    </label>
+                    <label className="flex items-center gap-2 text-[11px] text-slate-300 cursor-pointer">
+                      <Switch checked={r.auto_create_lead} onCheckedChange={() => toggleRouting(r)} /> Auto-route
+                    </label>
+                  </div>
+
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 w-7 rounded-lg p-0 text-slate-500 hover:bg-rose-400/10 hover:text-rose-400"
+                    onClick={() => remove(r.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </GlassCard>
           ))}
         </div>
       )}

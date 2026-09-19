@@ -2,17 +2,28 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import PipelineBar from "@/components/pipeline/PipelineBar";
 import { STAGE_LABELS, STAGE_ORDER, getNextStage, getStageIndex } from "@/lib/constants";
-import { ArrowLeft, Check, X, Loader2, Save, Copy, ExternalLink, RefreshCw, AlertCircle, Clock } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  X,
+  Loader2,
+  Save,
+  Copy,
+  ExternalLink,
+  RefreshCw,
+  AlertCircle,
+  Clock,
+  Briefcase,
+  UserCheck,
+  ShieldCheck,
+} from "lucide-react";
 import { toast } from "sonner";
 import { getStageForm } from "@/components/stages";
-import { useQuery } from "@tanstack/react-query";
 import SlaTimer from "@/components/sla/SlaTimer";
 import SlaDeadlineEditor from "@/components/sla/SlaDeadlineEditor";
 import type { Tables, Database } from "@/integrations/supabase/types";
@@ -28,6 +39,32 @@ import PostFlightPanel from "@/components/jobs/PostFlightPanel";
 type Job = Tables<"jobs">;
 type JobStage = Tables<"job_stages">;
 type JobStageEnum = Database["public"]["Enums"]["job_stage"];
+
+/* -------------------------------------------------------
+   FUTURISTIC GLASS CONTAINER
+------------------------------------------------------- */
+function GlassCard({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`
+        relative overflow-hidden rounded-[14px]
+        border border-white/[0.085]
+        bg-[#10151d]/95
+        shadow-[0_18px_60px_rgba(0,0,0,0.24)]
+        ${className}
+      `}
+    >
+      <div className="pointer-events-none absolute -right-20 -top-20 h-40 w-40 rounded-full bg-cyan-500/[0.035] blur-3xl" />
+      {children}
+    </div>
+  );
+}
 
 export default function LegacyJobDetail() {
   const { id } = useParams<{ id: string }>();
@@ -56,9 +93,7 @@ export default function LegacyJobDetail() {
     message?: string;
   }>({ timestamp: null, stagesSynced: [], success: null });
 
-  // Guaranteed quote-save watcher: polls the DB after launch until the synced
-  // timestamp on quotation_preparation advances past the snapshot, then forces
-  // the user back to Quotation Prep with fresh data.
+  // Guaranteed quote-save watcher
   const quoteWatcherRef = useRef<number | null>(null);
   const stopQuoteSaveWatcher = useCallback(() => {
     if (quoteWatcherRef.current) {
@@ -66,6 +101,7 @@ export default function LegacyJobDetail() {
       quoteWatcherRef.current = null;
     }
   }, []);
+
   const startQuoteSaveWatcher = useCallback(
     (prevSyncedAt: string | null) => {
       if (!id) return;
@@ -184,7 +220,7 @@ export default function LegacyJobDetail() {
     });
   }, [id, stages, selectedStage, formDirty, user]);
 
-  // Real-time subscription for job_stages updates (e.g. quote builder API sync)
+  // Real-time subscription
   useEffect(() => {
     if (!id) return;
     const channel = supabase
@@ -206,9 +242,6 @@ export default function LegacyJobDetail() {
           const isQuoteSync =
             updated.stage === "quotation_preparation" && newFd.api_synced_by === "quote_builder";
 
-          // When the external Quote Builder syncs back, always jump the user to
-          // Quotation Prep and force-refresh the form with the synced data,
-          // even if they had unsaved local edits (the Quote Builder is the source of truth).
           if (isQuoteSync) {
             stopQuoteSaveWatcher();
             setSelectedStage("quotation_preparation");
@@ -244,8 +277,7 @@ export default function LegacyJobDetail() {
     };
   }, [id, selectedStage, formDirty, stopQuoteSaveWatcher]);
 
-  // Listen for postMessage from the external Quote Builder popup (alternative to return_url).
-  // The external app can postMessage({ type: "quote_builder_saved", job_id }) on save.
+  // Listen for postMessage from external Quote Builder
   useEffect(() => {
     if (!id) return;
     const handler = (event: MessageEvent) => {
@@ -256,14 +288,13 @@ export default function LegacyJobDetail() {
       setSelectedStage("quotation_preparation");
       try { window.focus(); } catch {}
       toast.success("Quote saved — returned to Quotation Prep", { duration: 4000 });
-      // Pull the latest data immediately in case realtime hasn't fired yet.
       handleRefreshSync();
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
   }, [id, handleRefreshSync]);
 
-  // If the user is redirected back via return_url with ?from=quote_builder, focus the right stage.
+  // Redirect handling
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("from") === "quote_builder") {
@@ -271,22 +302,18 @@ export default function LegacyJobDetail() {
       setSelectedStage(stage);
       toast.success("Back from Quote Builder — refreshing quote data…", { duration: 3000 });
       handleRefreshSync();
-      // Clean the URL so a refresh doesn't re-trigger.
       const cleanUrl = window.location.pathname;
       window.history.replaceState({}, "", cleanUrl);
       return;
     }
-    // Generic deep-link: /jobs/:id?stage=<stage>
     const stageParam = params.get("stage") as JobStageEnum | null;
     if (stageParam && STAGE_ORDER.includes(stageParam)) {
       setSelectedStage(stageParam);
       const cleanUrl = window.location.pathname;
       window.history.replaceState({}, "", cleanUrl);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load form data when stage changes
   const currentStageData = stages.find((s) => s.stage === selectedStage);
 
   useEffect(() => {
@@ -298,7 +325,6 @@ export default function LegacyJobDetail() {
       setQuoteConfirmed(false);
     }
   }, [currentStageData?.id]);
-
 
   const isCurrentStageOwner =
     currentStageData && user &&
@@ -315,7 +341,6 @@ export default function LegacyJobDetail() {
     currentStageData?.status === "active" &&
     selectedStage === job?.current_stage &&
     (selectedStage !== "quotation_preparation" || quoteConfirmed);
-
 
   const handleFormChange = (data: Record<string, any>) => {
     setFormData(data);
@@ -350,7 +375,6 @@ export default function LegacyJobDetail() {
       );
       return;
     }
-    // Shop-drawing approval gate: cannot leave fabrication_order without an approved drawing
     if (selectedStage === "fabrication_order") {
       const { data: drawings } = await supabase
         .from("shop_drawings")
@@ -363,7 +387,6 @@ export default function LegacyJobDetail() {
         return;
       }
     }
-    // Pre-flight gate: must have a passed + manager-approved check before leaving pre_flight_check
     if (selectedStage === "pre_flight_check") {
       const { data: checks } = await supabase
         .from("pre_flight_checks")
@@ -377,7 +400,6 @@ export default function LegacyJobDetail() {
         return;
       }
     }
-    // Flight execution gate (spray jobs): require at least one spray log entry
     if (selectedStage === "flight_execution" && (job as any).job_category === "drone_spray") {
       const { data: sprays } = await supabase
         .from("spray_logs").select("id").eq("job_id", job.id).limit(1);
@@ -386,7 +408,6 @@ export default function LegacyJobDetail() {
         return;
       }
     }
-    // Post-flight gate: require a complete log entry
     if (selectedStage === "post_flight_log") {
       const { data: logs } = await supabase
         .from("post_flight_logs")
@@ -459,283 +480,362 @@ export default function LegacyJobDetail() {
     }
   };
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "approved":
+        return "border-emerald-400/30 bg-emerald-400/10 text-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.15)]";
+      case "active":
+        return "border-cyan-400/30 bg-cyan-400/10 text-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.15)]";
+      case "rejected":
+        return "border-rose-400/30 bg-rose-400/10 text-rose-300 shadow-[0_0_12px_rgba(244,63,94,0.15)]";
+      default:
+        return "border-slate-800 bg-slate-900/50 text-slate-500";
+    }
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
       </div>
     );
   }
 
   if (!job) {
-    return <div className="py-20 text-center text-muted-foreground">Job not found.</div>;
+    return (
+      <div className="py-20 text-center text-xs text-slate-500">
+        Job specified could not be located in workspace records.
+      </div>
+    );
   }
 
   const StageFormComponent = selectedStage ? getStageForm(selectedStage) : null;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/jobs")}>
+    <div className="space-y-5 text-slate-200">
+      {/* HEADER BAR */}
+      <div className="flex items-center gap-4 border-b border-white/[0.065] pb-4">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => navigate("/jobs")}
+          className="h-8.5 w-8.5 rounded-lg border-white/[0.08] bg-white/[0.02] text-slate-300 hover:bg-white/[0.06] hover:text-white"
+        >
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="font-heading text-2xl font-bold">
-            {job.job_number} — {job.client_name}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {job.service_type || "No service type"} • {job.client_location || "No location"}
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs font-semibold text-cyan-400">
+              {job.job_number}
+            </span>
+            <span className="text-slate-600">•</span>
+            <h1 className="text-lg font-bold text-white sm:text-xl">
+              {job.client_name}
+            </h1>
+          </div>
+          <p className="mt-0.5 text-[11px] text-slate-400">
+            {job.service_type || "No service type"} • {job.client_location || "No location specified"}
           </p>
         </div>
+
         <div className="ml-auto flex flex-col items-end gap-1.5">
           <Button
-            variant={refreshError ? "destructive" : "outline"}
+            variant="outline"
             size="sm"
             onClick={handleRefreshSync}
             disabled={refreshing}
-            className="gap-1.5"
+            className={`h-8 rounded-lg border px-3 text-[11px] font-medium transition-all ${
+              refreshError
+                ? "border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20"
+                : "border-white/[0.08] bg-white/[0.02] text-slate-300 hover:bg-white/[0.06] hover:text-white"
+            }`}
           >
             {refreshError ? (
-              <AlertCircle className="h-3.5 w-3.5" />
+              <AlertCircle className="mr-1.5 h-3.5 w-3.5 text-rose-400" />
             ) : (
-              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+              <RefreshCw
+                className={`mr-1.5 h-3.5 w-3.5 ${refreshing ? "animate-spin text-cyan-400" : "text-slate-400"}`}
+              />
             )}
-            {refreshing ? "Retrying…" : refreshError ? "Retry Sync" : "Refresh Sync Status"}
+            {refreshing ? "Syncing…" : refreshError ? "Retry Sync" : "Refresh Sync Status"}
           </Button>
           {refreshError && (
-            <p className="max-w-xs text-right text-xs text-destructive">
+            <p className="max-w-xs text-right text-[10px] text-rose-400">
               {refreshError}
             </p>
           )}
         </div>
       </div>
 
-      {/* Last Sync Banner */}
+      {/* LAST SYNC BANNER */}
       {lastSyncInfo.timestamp && (
         <div
-          className={`flex items-center gap-3 rounded border px-4 py-2.5 text-sm ${
+          className={`flex items-center gap-3 rounded-xl border px-4 py-2.5 text-[11px] ${
             lastSyncInfo.success
-              ? "border-success/30 bg-success/5 text-success"
-              : "border-destructive/30 bg-destructive/5 text-destructive"
+              ? "border-emerald-500/20 bg-emerald-500/5 text-emerald-300"
+              : "border-rose-500/20 bg-rose-500/5 text-rose-300"
           }`}
         >
           {lastSyncInfo.success ? (
-            <Check className="h-4 w-4 shrink-0" />
+            <Check className="h-4 w-4 shrink-0 text-emerald-400" />
           ) : (
-            <AlertCircle className="h-4 w-4 shrink-0" />
+            <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
           )}
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="font-semibold">
               {lastSyncInfo.success ? "Sync successful" : "Sync failed"}
             </span>
-            <span className="text-muted-foreground">
-              <Clock className="inline h-3.5 w-3.5 mr-1 -mt-0.5" />
+            <span className="text-slate-400">
+              <Clock className="inline h-3 w-3 mr-1 -mt-0.5 text-slate-500" />
               {lastSyncInfo.timestamp.toLocaleString()}
             </span>
             {lastSyncInfo.stagesSynced.length > 0 && (
-              <span className="text-foreground/80">
+              <span className="text-slate-300">
                 • Stages: {lastSyncInfo.stagesSynced.join(", ")}
               </span>
             )}
             {lastSyncInfo.message && (
-              <span className="text-destructive">{lastSyncInfo.message}</span>
+              <span className="text-rose-400">{lastSyncInfo.message}</span>
             )}
           </div>
         </div>
       )}
 
-      {/* Pipeline */}
-      <Card>
-        <CardContent className="p-4">
-          <PipelineBar
-            stages={stages.map((s) => ({ stage: s.stage, status: s.status }))}
-            currentStage={job.current_stage}
-            onStageClick={(stage) => setSelectedStage(stage)}
-          />
-        </CardContent>
-      </Card>
+      {/* PIPELINE NAVIGATION CARD */}
+      <GlassCard className="p-4 sm:p-5">
+        <PipelineBar
+          stages={stages.map((s) => ({ stage: s.stage, status: s.status }))}
+          currentStage={job.current_stage}
+          onStageClick={(stage) => setSelectedStage(stage)}
+        />
+      </GlassCard>
 
-      {/* Selected Stage Detail */}
+      {/* SELECTED STAGE DETAIL GRID */}
       {selectedStage && currentStageData && (
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Stage form */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="font-heading text-lg">
-                  Step {getStageIndex(selectedStage) + 1}: {STAGE_LABELS[selectedStage]}
-                </CardTitle>
-                <Badge
-                  variant="outline"
-                  className={
-                    currentStageData.status === "approved"
-                      ? "border-success text-success"
-                      : currentStageData.status === "active"
-                      ? "border-accent text-accent"
-                      : currentStageData.status === "rejected"
-                      ? "border-destructive text-destructive"
-                      : "border-locked text-locked-foreground"
-                  }
-                >
-                  {currentStageData.status.toUpperCase()}
-                </Badge>
+        <div className="grid gap-5 lg:grid-cols-3">
+          {/* MAIN STAGE WORKSPACE FORM */}
+          <GlassCard className="lg:col-span-2 p-5 sm:p-6 space-y-6">
+            <div className="flex items-center justify-between border-b border-white/[0.085] pb-4">
+              <div>
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                  Step {getStageIndex(selectedStage) + 1}
+                </span>
+                <h2 className="text-base font-bold text-white">
+                  {STAGE_LABELS[selectedStage]}
+                </h2>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* SLA Timer + Editor */}
-              <div className="space-y-2">
-                <SlaTimer
-                  slaDeadlineHours={currentStageData.sla_deadline_hours}
-                  slaStartedAt={currentStageData.sla_started_at}
-                  status={currentStageData.status}
-                />
-                {isAdmin && (
-                  <SlaDeadlineEditor
-                    stageId={currentStageData.id}
-                    currentHours={currentStageData.sla_deadline_hours}
-                    onUpdated={(h) => {
-                      setStages((prev) =>
-                        prev.map((s) =>
-                          s.id === currentStageData.id ? { ...s, sla_deadline_hours: h } : s
-                        )
-                      );
-                    }}
-                  />
-                )}
-              </div>
+              <span
+                className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(
+                  currentStageData.status
+                )}`}
+              >
+                {currentStageData.status}
+              </span>
+            </div>
 
-              {/* Stage-specific form */}
-              {StageFormComponent && (
+            {/* SLA TIMER & ADMIN EDITOR */}
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.015] p-3.5 space-y-2">
+              <SlaTimer
+                slaDeadlineHours={currentStageData.sla_deadline_hours}
+                slaStartedAt={currentStageData.sla_started_at}
+                status={currentStageData.status}
+              />
+              {isAdmin && (
+                <SlaDeadlineEditor
+                  stageId={currentStageData.id}
+                  currentHours={currentStageData.sla_deadline_hours}
+                  onUpdated={(h) => {
+                    setStages((prev) =>
+                      prev.map((s) =>
+                        s.id === currentStageData.id ? { ...s, sla_deadline_hours: h } : s
+                      )
+                    );
+                  }}
+                />
+              )}
+            </div>
+
+            {/* STAGE FORM RENDERER */}
+            {StageFormComponent && (
+              <div className="pt-1">
                 <StageFormComponent
                   formData={formData}
                   onChange={handleFormChange}
                   readOnly={!canEdit}
                   jobId={job.id}
                   stageId={currentStageData.id}
-                  onQuoteConfirm={selectedStage === "quotation_preparation" ? setQuoteConfirmed : undefined}
+                  onQuoteConfirm={
+                    selectedStage === "quotation_preparation" ? setQuoteConfirmed : undefined
+                  }
                 />
-              )}
+              </div>
+            )}
 
+            {/* STAGE NOTES & REJECTION NOTICE */}
+            {canEdit && (
+              <div className="space-y-2 border-t border-white/[0.085] pt-4">
+                <Label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                  Stage Notes & Observations
+                </Label>
+                <Textarea
+                  value={notes}
+                  onChange={(e) => {
+                    setNotes(e.target.value);
+                    setFormDirty(true);
+                  }}
+                  placeholder="Record operational notes, client requests, or field observations..."
+                  rows={3}
+                  className="rounded-xl border-white/[0.08] bg-[#10151d] text-[11px] text-slate-200 placeholder:text-slate-500 focus:border-cyan-400/30 focus:ring-1 focus:ring-cyan-400/30"
+                />
+              </div>
+            )}
 
-              {/* Stage notes */}
-              {canEdit && (
-                <div className="space-y-2 border-t border-border pt-4">
-                  <Label>Stage Notes</Label>
-                  <Textarea
-                    value={notes}
-                    onChange={(e) => { setNotes(e.target.value); setFormDirty(true); }}
-                    placeholder="Add any notes, observations, or comments..."
-                    rows={3}
-                  />
-                </div>
-              )}
+            {currentStageData.notes && !canEdit && (
+              <div className="space-y-1 border-t border-white/[0.085] pt-4">
+                <Label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                  Notes
+                </Label>
+                <p className="text-[11px] text-slate-300 bg-white/[0.02] p-3 rounded-lg border border-white/[0.06]">
+                  {currentStageData.notes}
+                </p>
+              </div>
+            )}
 
-              {currentStageData.notes && !canEdit && (
-                <div className="space-y-1 border-t border-border pt-4">
-                  <Label className="text-muted-foreground">Notes</Label>
-                  <p className="text-sm">{currentStageData.notes}</p>
-                </div>
-              )}
+            {currentStageData.rejection_reason && (
+              <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-[11px]">
+                <p className="font-semibold text-rose-300">Rejection Reason:</p>
+                <p className="mt-0.5 text-rose-200/90">
+                  {currentStageData.rejection_reason}
+                </p>
+              </div>
+            )}
 
-              {currentStageData.rejection_reason && (
-                <div className="rounded border border-destructive/30 bg-destructive/5 p-3">
-                  <p className="text-sm font-medium text-destructive">Rejection Reason:</p>
-                  <p className="text-sm">{currentStageData.rejection_reason}</p>
-                </div>
-              )}
+            {/* ACTION TRIGGER BUTTONS */}
+            {canEdit && (
+              <div className="flex flex-wrap items-center gap-3 border-t border-white/[0.085] pt-4">
+                <Button
+                  onClick={handleSaveForm}
+                  disabled={saving || !formDirty}
+                  variant="outline"
+                  className="h-8.5 rounded-lg border-white/[0.08] bg-white/[0.02] text-[11px] font-medium text-slate-300 hover:bg-white/[0.06] hover:text-white"
+                >
+                  {saving ? (
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Save className="mr-1.5 h-3.5 w-3.5 text-cyan-400" />
+                  )}
+                  Save Progress
+                </Button>
 
-              {/* Action buttons */}
-              {canEdit && (
-                <div className="flex flex-wrap gap-3 border-t border-border pt-4">
+                {canApprove && (
                   <Button
-                    onClick={handleSaveForm}
-                    disabled={saving || !formDirty}
+                    onClick={handleApprove}
+                    disabled={approving}
+                    className="h-8.5 rounded-lg bg-emerald-500 px-3.5 text-[11px] font-bold text-slate-950 shadow-[0_0_20px_rgba(52,211,153,0.2)] transition-all hover:bg-emerald-400"
+                  >
+                    {approving ? (
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Check className="mr-1.5 h-3.5 w-3.5" />
+                    )}
+                    Approve & Advance
+                  </Button>
+                )}
+
+                {canApprove && (
+                  <Button
                     variant="outline"
+                    onClick={() => setShowRejectForm(!showRejectForm)}
+                    className="h-8.5 rounded-lg border-rose-500/30 bg-rose-500/10 text-[11px] font-medium text-rose-300 hover:bg-rose-500/20"
                   >
-                    {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    Save Progress
+                    <X className="mr-1.5 h-3.5 w-3.5" />
+                    Reject
                   </Button>
-                  {canApprove && (
-                    <Button
-                      onClick={handleApprove}
-                      disabled={approving}
-                      className="bg-success text-success-foreground hover:bg-success/90"
-                    >
-                      {approving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                      Approve & Advance
-                    </Button>
-                  )}
-                  {canApprove && (
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowRejectForm(!showRejectForm)}
-                      className="border-destructive text-destructive hover:bg-destructive/10"
-                    >
-                      <X className="mr-2 h-4 w-4" />
-                      Reject
-                    </Button>
-                  )}
-                </div>
-              )}
+                )}
+              </div>
+            )}
 
-              {showRejectForm && (
-                <div className="space-y-3 rounded border border-destructive/30 p-4">
-                  <Label>Reason for rejection *</Label>
-                  <Textarea
-                    value={rejectionReason}
-                    onChange={(e) => setRejectionReason(e.target.value)}
-                    placeholder="Explain why this stage is being rejected..."
-                    rows={3}
-                  />
-                  <Button
-                    onClick={handleReject}
-                    disabled={rejecting || !rejectionReason.trim()}
-                    variant="destructive"
-                  >
-                    {rejecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Confirm Rejection
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+            {/* REJECTION REASON FORM */}
+            {showRejectForm && (
+              <div className="space-y-3 rounded-xl border border-rose-500/30 bg-rose-500/5 p-4">
+                <Label className="text-[10px] font-semibold uppercase tracking-wider text-rose-300">
+                  Reason for Rejection *
+                </Label>
+                <Textarea
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="Explain why this stage is being rejected..."
+                  rows={3}
+                  className="rounded-xl border-rose-500/20 bg-[#10151d] text-[11px] text-slate-200 placeholder:text-slate-500 focus:border-rose-400 focus:ring-1 focus:ring-rose-400"
+                />
+                <Button
+                  onClick={handleReject}
+                  disabled={rejecting || !rejectionReason.trim()}
+                  className="h-8 rounded-lg bg-rose-500 px-3 text-[11px] font-bold text-white shadow-[0_0_15px_rgba(244,63,94,0.25)] hover:bg-rose-600"
+                >
+                  {rejecting && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                  Confirm Rejection
+                </Button>
+              </div>
+            )}
+          </GlassCard>
 
-          {/* Client info sidebar */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-heading text-lg">Client Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div><p className="text-muted-foreground">Name</p><p className="font-medium">{job.client_name}</p></div>
-              <div><p className="text-muted-foreground">Phone</p><p className="font-medium">{job.client_phone || "—"}</p></div>
-              <div><p className="text-muted-foreground">Email</p><p className="font-medium">{job.client_email || "—"}</p></div>
-              <div><p className="text-muted-foreground">Location</p><p className="font-medium">{job.client_location || "—"}</p></div>
-              <div><p className="text-muted-foreground">Service Type</p><p className="font-medium">{job.service_type || "—"}</p></div>
+          {/* CLIENT DETAILS SIDEBAR */}
+          <GlassCard className="p-5 sm:p-6 space-y-4 h-fit">
+            <div className="border-b border-white/[0.085] pb-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Client Profile
+              </h3>
+            </div>
 
-              {/* Client tracking link */}
+            <div className="space-y-3 text-[11px]">
+              <div>
+                <span className="text-[10px] font-medium text-slate-500">Full Name / Account</span>
+                <p className="font-semibold text-slate-100">{job.client_name}</p>
+              </div>
+              <div>
+                <span className="text-[10px] font-medium text-slate-500">Contact Phone</span>
+                <p className="font-medium text-slate-300">{job.client_phone || "—"}</p>
+              </div>
+              <div>
+                <span className="text-[10px] font-medium text-slate-500">Email Address</span>
+                <p className="font-medium text-slate-300">{job.client_email || "—"}</p>
+              </div>
+              <div>
+                <span className="text-[10px] font-medium text-slate-500">Primary Location</span>
+                <p className="font-medium text-slate-300">{job.client_location || "—"}</p>
+              </div>
+              <div>
+                <span className="text-[10px] font-medium text-slate-500">Service Category</span>
+                <p className="font-medium text-slate-300">{job.service_type || "—"}</p>
+              </div>
+
+              {/* CLIENT TRACKING LINK GENERATOR */}
               {(job as any).tracking_token && (
-                <div className="border-t border-border pt-3">
-                  <p className="text-muted-foreground">Client Tracking Link</p>
-                  <div className="mt-1 flex items-center gap-2">
+                <div className="border-t border-white/[0.085] pt-3.5 space-y-2">
+                  <span className="text-[10px] font-medium text-slate-500">Client Tracking Access</span>
+                  <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-xs"
+                      className="h-7 rounded-md border-white/[0.08] bg-white/[0.03] text-[10px] font-semibold text-slate-300 hover:bg-white/[0.08] hover:text-white"
                       onClick={() => {
                         const url = `${window.location.origin}/track?token=${(job as any).tracking_token}`;
                         navigator.clipboard.writeText(url);
-                        toast.success("Tracking link copied!");
+                        toast.success("Tracking link copied to clipboard");
                       }}
                     >
-                      <Copy className="mr-1 h-3 w-3" /> Copy Link
+                      <Copy className="mr-1 h-3 w-3 text-cyan-400" /> Copy Link
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-xs"
+                      className="h-7 text-[10px] text-slate-400 hover:text-white"
                       onClick={() => {
-                        window.open(`${window.location.origin}/track?token=${(job as any).tracking_token}`, "_blank");
+                        window.open(
+                          `${window.location.origin}/track?token=${(job as any).tracking_token}`,
+                          "_blank"
+                        );
                       }}
                     >
                       <ExternalLink className="mr-1 h-3 w-3" /> Preview
@@ -743,34 +843,38 @@ export default function LegacyJobDetail() {
                   </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </GlassCard>
         </div>
       )}
 
-      {/* Revenue protection panels */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* REVENUE PROTECTION & OPERATIONAL PANELS */}
+      <div className="grid gap-5 lg:grid-cols-2">
         <VariationsPanel jobId={job.id} />
         <PaymentsPanel
           jobId={job.id}
           quotedAmount={(() => {
             const qp = stages.find((s) => s.stage === "quotation_preparation");
             const amt = (qp?.form_data as any)?.quote_amount;
-            const variations = 0; // approved variation totals fetched inside VariationsPanel
+            const variations = 0;
             return amt ? Number(amt) + variations : undefined;
           })()}
         />
       </div>
+
       <ShopDrawingsPanel jobId={job.id} />
 
-      {((job as any).job_category === "drone_flight" || (job as any).job_category === "drone_spray") && (
-        <div className="space-y-6">
-          <div className="grid gap-6 lg:grid-cols-2">
+      {((job as any).job_category === "drone_flight" ||
+        (job as any).job_category === "drone_spray") && (
+        <div className="space-y-5">
+          <div className="grid gap-5 lg:grid-cols-2">
             <PreFlightChecklistPanel jobId={job.id} />
             <FlightLogPanel jobId={job.id} />
           </div>
-          <div className="grid gap-6 lg:grid-cols-2">
-            {(job as any).job_category === "drone_spray" && <SprayLogPanel jobId={job.id} />}
+          <div className="grid gap-5 lg:grid-cols-2">
+            {(job as any).job_category === "drone_spray" && (
+              <SprayLogPanel jobId={job.id} />
+            )}
             <PostFlightPanel jobId={job.id} />
           </div>
         </div>

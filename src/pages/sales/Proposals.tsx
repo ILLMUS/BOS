@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,7 +11,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { toast } from "@/hooks/use-toast";
 import { formatMoney } from "@/lib/crm";
 import { formatCurrency } from "@/lib/currency";
-import { Copy, Loader2, Plus, Trash2 } from "lucide-react";
+import { Copy, Loader2, Plus, Trash2, FileText } from "lucide-react";
+import { motion } from "framer-motion";
 
 const CONFIG_KEY = "proposal_templates";
 
@@ -78,6 +78,32 @@ Prepared by {{company}}.`,
 ];
 
 const TOKENS = ["client", "contact", "scope", "value", "company", "date"];
+
+/* -------------------------------------------------------
+   BUSINESS OS GLASS CARD CONTAINER
+------------------------------------------------------- */
+function GlassCard({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`
+        relative overflow-hidden rounded-[14px]
+        border border-white/[0.085]
+        bg-[#10151d]/95
+        shadow-[0_18px_60px_rgba(0,0,0,0.24)]
+        ${className}
+      `}
+    >
+      <div className="pointer-events-none absolute -right-20 -top-20 h-40 w-40 rounded-full bg-cyan-500/[0.035] blur-3xl" />
+      {children}
+    </div>
+  );
+}
 
 export default function Proposals() {
   const { orgId, isAdmin, organization } = useAuth();
@@ -154,110 +180,235 @@ export default function Proposals() {
   };
 
   if (loading) {
-    return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+    return (
+      <div className="flex h-64 items-center justify-center text-[11px] text-slate-400">
+        <Loader2 className="mr-2 h-5 w-5 animate-spin text-cyan-400" />
+        Loading proposal templates...
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="space-y-5 text-slate-200 min-w-0 pb-12">
+      {/* HEADER BAR */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.065] pb-4 min-w-0">
         <div>
-          <h1 className="font-heading text-2xl font-bold">Proposal templates</h1>
-          <p className="text-sm text-muted-foreground">Reusable proposal wording, auto-filled from an opportunity.</p>
+          <h1 className="flex items-center gap-2.5 text-xl font-bold tracking-tight text-white sm:text-2xl min-w-0">
+            <motion.div
+              whileHover={{ rotate: 15, scale: 1.1 }}
+              transition={{ type: "spring", stiffness: 300, damping: 15 }}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-cyan-400/20 bg-cyan-500/10 text-cyan-400"
+            >
+              <FileText className="h-4 w-4" />
+            </motion.div>
+            <span className="truncate">Proposal templates</span>
+          </h1>
+          <p className="mt-0.5 text-[11px] text-slate-400 break-words">
+            Reusable proposal wording, auto-filled from an opportunity.
+          </p>
         </div>
+
         {isAdmin && (
-          <Button size="sm" onClick={() => setEditing({ id: "", name: "", description: "", body: "" })}>
-            <Plus className="mr-1 h-4 w-4" /> New template
+          <Button
+            size="sm"
+            onClick={() => setEditing({ id: "", name: "", description: "", body: "" })}
+            className="h-8 rounded-lg bg-cyan-500 px-3.5 text-[11px] font-bold text-slate-950 shadow-[0_0_20px_rgba(34,211,238,0.2)] transition-all hover:bg-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.35)] active:scale-[0.98]"
+          >
+            <Plus className="mr-1.5 h-3.5 w-3.5" /> New template
           </Button>
         )}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[320px,1fr]">
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="font-heading text-base">Templates</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
+      <div className="grid gap-4 lg:grid-cols-[320px,1fr] min-w-0">
+        {/* TEMPLATES LIST */}
+        <GlassCard>
+          <div className="border-b border-white/[0.085] bg-white/[0.02] px-4 py-3">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              Templates
+            </span>
+          </div>
+          <div className="p-4 space-y-2 min-w-0">
             {templates.map((t) => (
               <button
                 key={t.id}
                 onClick={() => setSelectedId(t.id)}
-                className={`w-full rounded border p-3 text-left text-sm transition ${t.id === selected?.id ? "border-primary bg-muted/50" : "hover:bg-muted/30"}`}
+                className={`w-full rounded-xl border p-3 text-left text-xs transition-all ${
+                  t.id === selected?.id
+                    ? "border-cyan-400/40 bg-cyan-500/10 text-white shadow-[0_0_15px_rgba(34,211,238,0.1)]"
+                    : "border-white/[0.08] bg-[#0b0e14] text-slate-300 hover:bg-white/[0.04] hover:border-white/[0.15]"
+                }`}
               >
-                <p className="font-medium">{t.name}</p>
-                <p className="text-xs text-muted-foreground">{t.description}</p>
+                <p className="font-semibold text-slate-100">{t.name}</p>
+                <p className="mt-0.5 text-[10px] text-slate-400 break-words">{t.description}</p>
                 {isAdmin && (
-                  <span className="mt-2 flex gap-2">
-                    <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setEditing(t); }}>Edit</Button>
+                  <span className="mt-2.5 flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => { e.stopPropagation(); setEditing(t); }}
+                      className="h-6 border-white/[0.08] bg-[#10151d] px-2.5 text-[10px] font-medium text-slate-300 hover:bg-white/10 hover:text-white"
+                    >
+                      Edit
+                    </Button>
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={(e) => { e.stopPropagation(); persist(templates.filter((x) => x.id !== t.id)); }}
+                      className="h-6 w-6 p-0 text-slate-400 hover:bg-rose-500/10 hover:text-rose-400"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </span>
                 )}
               </button>
             ))}
-            {templates.length === 0 && <p className="text-sm text-muted-foreground">No templates yet.</p>}
-          </CardContent>
-        </Card>
+            {templates.length === 0 && <p className="text-[11px] text-slate-500 py-4 text-center">No templates yet.</p>}
+          </div>
+        </GlassCard>
 
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="font-heading text-base">Fill from</CardTitle></CardHeader>
-            <CardContent className="grid gap-3 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <Label className="text-xs">Opportunity</Label>
+        {/* FILL FROM & PREVIEW */}
+        <div className="space-y-4 min-w-0">
+          <GlassCard>
+            <div className="border-b border-white/[0.085] bg-white/[0.02] px-6 py-3.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                Fill from
+              </span>
+            </div>
+            <div className="p-6 grid gap-3.5 sm:grid-cols-2 min-w-0">
+              <div className="sm:col-span-2 min-w-0 space-y-1.5">
+                <Label className="text-[11px] font-medium text-slate-300">Opportunity</Label>
                 <Select value={sourceId} onValueChange={setSourceId}>
-                  <SelectTrigger><SelectValue placeholder="Fill manually" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="manual">Fill manually</SelectItem>
+                  <SelectTrigger className="h-9 rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-300">
+                    <SelectValue placeholder="Fill manually" />
+                  </SelectTrigger>
+                  <SelectContent className="border-white/[0.085] bg-[#10151d] text-slate-200">
+                    <SelectItem value="manual" className="text-[11px]">Fill manually</SelectItem>
                     {deals.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>{d.name}{d.account ? ` — ${d.account}` : ""}</SelectItem>
+                      <SelectItem key={d.id} value={d.id} className="text-[11px]">
+                        {d.name}{d.account ? ` — ${d.account}` : ""}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+
               {sourceId === "manual" && (
                 <>
-                  <div><Label className="text-xs">Client</Label><Input value={manual.client} onChange={(e) => setManual({ ...manual, client: e.target.value })} /></div>
-                  <div><Label className="text-xs">Contact first name</Label><Input value={manual.contact} onChange={(e) => setManual({ ...manual, contact: e.target.value })} /></div>
-                  <div><Label className="text-xs">Scope</Label><Input value={manual.scope} onChange={(e) => setManual({ ...manual, scope: e.target.value })} /></div>
-                  <div><Label className="text-xs">Value</Label><Input type="number" value={manual.value} onChange={(e) => setManual({ ...manual, value: e.target.value })} /></div>
+                  <div className="space-y-1.5 min-w-0">
+                    <Label className="text-[11px] font-medium text-slate-300">Client</Label>
+                    <Input
+                      value={manual.client}
+                      onChange={(e) => setManual({ ...manual, client: e.target.value })}
+                      className="h-9 rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-200 placeholder:text-slate-600 focus:border-cyan-400/40"
+                    />
+                  </div>
+                  <div className="space-y-1.5 min-w-0">
+                    <Label className="text-[11px] font-medium text-slate-300">Contact first name</Label>
+                    <Input
+                      value={manual.contact}
+                      onChange={(e) => setManual({ ...manual, contact: e.target.value })}
+                      className="h-9 rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-200 placeholder:text-slate-600 focus:border-cyan-400/40"
+                    />
+                  </div>
+                  <div className="space-y-1.5 min-w-0">
+                    <Label className="text-[11px] font-medium text-slate-300">Scope</Label>
+                    <Input
+                      value={manual.scope}
+                      onChange={(e) => setManual({ ...manual, scope: e.target.value })}
+                      className="h-9 rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-200 placeholder:text-slate-600 focus:border-cyan-400/40"
+                    />
+                  </div>
+                  <div className="space-y-1.5 min-w-0">
+                    <Label className="text-[11px] font-medium text-slate-300">Value</Label>
+                    <Input
+                      type="number"
+                      value={manual.value}
+                      onChange={(e) => setManual({ ...manual, value: e.target.value })}
+                      className="h-9 rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-200 placeholder:text-slate-600 focus:border-cyan-400/40"
+                    />
+                  </div>
                 </>
               )}
-              <div className="sm:col-span-2 flex flex-wrap gap-1">
-                {TOKENS.map((t) => <Badge key={t} variant="outline" className="font-mono text-[10px]">{`{{${t}}}`}</Badge>)}
-              </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="font-heading text-base">Preview</CardTitle>
-              <Button size="sm" variant="outline" onClick={copy}><Copy className="mr-1 h-4 w-4" /> Copy</Button>
-            </CardHeader>
-            <CardContent>
-              <pre className="whitespace-pre-wrap rounded border bg-muted/30 p-4 text-sm">{rendered}</pre>
-            </CardContent>
-          </Card>
+              <div className="sm:col-span-2 flex flex-wrap gap-1.5 pt-1">
+                {TOKENS.map((t) => (
+                  <Badge key={t} variant="outline" className="border-white/[0.08] bg-[#0b0e14] font-mono text-[10px] text-cyan-300">
+                    {`{{${t}}}`}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </GlassCard>
+
+          <GlassCard>
+            <div className="flex items-center justify-between border-b border-white/[0.085] bg-white/[0.02] px-6 py-3.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                Preview
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={copy}
+                className="h-7 border-cyan-400/30 bg-cyan-400/10 text-[10px] font-bold text-cyan-300 hover:bg-cyan-400/20"
+              >
+                <Copy className="mr-1.5 h-3 w-3" /> Copy
+              </Button>
+            </div>
+            <div className="p-6">
+              <pre className="whitespace-pre-wrap rounded-xl border border-white/[0.08] bg-[#0b0e14] p-4 text-xs font-mono text-slate-200 overflow-x-auto">
+                {rendered}
+              </pre>
+            </div>
+          </GlassCard>
         </div>
       </div>
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle>{editing?.id ? "Edit template" : "New template"}</DialogTitle></DialogHeader>
+        <DialogContent className="border-white/[0.085] bg-[#10151d] text-slate-200 shadow-[0_18px_60px_rgba(0,0,0,0.4)] sm:max-w-2xl">
+          <DialogHeader className="border-b border-white/[0.065] pb-3">
+            <DialogTitle className="text-sm font-bold text-white">
+              {editing?.id ? "Edit template" : "New template"}
+            </DialogTitle>
+          </DialogHeader>
           {editing && (
-            <div className="space-y-3">
-              <div><Label className="text-xs">Name</Label><Input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></div>
-              <div><Label className="text-xs">Description</Label><Input value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} /></div>
-              <div>
-                <Label className="text-xs">Body — use tokens like {"{{client}}"}</Label>
-                <Textarea rows={14} value={editing.body} onChange={(e) => setEditing({ ...editing, body: e.target.value })} />
+            <div className="space-y-3.5 pt-2">
+              <div className="space-y-1.5 min-w-0">
+                <Label className="text-[11px] font-medium text-slate-300">Name</Label>
+                <Input
+                  value={editing.name}
+                  onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+                  className="h-9 rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-200 placeholder:text-slate-600 focus:border-cyan-400/40"
+                />
+              </div>
+              <div className="space-y-1.5 min-w-0">
+                <Label className="text-[11px] font-medium text-slate-300">Description</Label>
+                <Input
+                  value={editing.description}
+                  onChange={(e) => setEditing({ ...editing, description: e.target.value })}
+                  className="h-9 rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-200 placeholder:text-slate-600 focus:border-cyan-400/40"
+                />
+              </div>
+              <div className="space-y-1.5 min-w-0">
+                <Label className="text-[11px] font-medium text-slate-300">
+                  Body — use tokens like <code className="text-cyan-400">{"{{client}}"}</code>
+                </Label>
+                <Textarea
+                  rows={12}
+                  value={editing.body}
+                  onChange={(e) => setEditing({ ...editing, body: e.target.value })}
+                  className="rounded-xl border-white/[0.08] bg-[#0b0e14] text-xs font-mono text-slate-200 focus:border-cyan-400/40"
+                />
               </div>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+          <DialogFooter className="pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setEditing(null)}
+              className="h-8 border-white/[0.08] bg-transparent text-xs text-slate-300 hover:bg-white/10 hover:text-white"
+            >
+              Cancel
+            </Button>
             <Button
               disabled={saving || !editing?.name.trim()}
               onClick={async () => {
@@ -270,8 +421,9 @@ export default function Proposals() {
                 setSelectedId(id);
                 setEditing(null);
               }}
+              className="h-8 bg-cyan-500 text-xs font-bold text-slate-950 shadow-[0_0_20px_rgba(34,211,238,0.2)] hover:bg-cyan-400"
             >
-              {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />} Save
+              {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />} Save
             </Button>
           </DialogFooter>
         </DialogContent>

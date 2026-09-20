@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import BackButton from "@/components/layout/BackButton";
@@ -15,6 +13,32 @@ import { addMonths, label, loadClientAccounts, loadJobsLite, REMINDER_TYPES, typ
 import { CalendarClock, Check, Loader2, Plus, RotateCw } from "lucide-react";
 
 const today = () => new Date().toISOString().slice(0, 10);
+
+/* -------------------------------------------------------
+   BUSINESS OS GLASS CARD CONTAINER
+------------------------------------------------------- */
+function GlassCard({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`
+        relative overflow-hidden rounded-[14px]
+        border border-white/[0.085]
+        bg-[#10151d]/95
+        shadow-[0_18px_60px_rgba(0,0,0,0.24)]
+        ${className}
+      `}
+    >
+      <div className="pointer-events-none absolute -right-20 -top-20 h-40 w-40 rounded-full bg-cyan-500/[0.035] blur-3xl" />
+      {children}
+    </div>
+  );
+}
 
 export default function ClientReminders() {
   const { orgId, user } = useAuth();
@@ -115,104 +139,228 @@ export default function ClientReminders() {
 
   const accountName = (id: string | null) => accounts.find((a) => a.id === id)?.name;
 
+  const getBadgeStyle = (overdue: boolean, status: string) => {
+    if (overdue) {
+      return "border-rose-400/30 bg-rose-400/10 text-rose-300 shadow-[0_0_12px_rgba(244,63,94,0.15)]";
+    }
+    if (status === "scheduled") {
+      return "border-cyan-400/30 bg-cyan-400/10 text-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.15)]";
+    }
+    return "border-emerald-400/30 bg-emerald-400/10 text-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.15)]";
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 text-slate-200">
       <BackButton />
-      <div className="flex flex-wrap items-start justify-between gap-3">
+
+      {/* HEADER BAR */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.065] pb-4">
         <div>
-          <h1 className="font-heading text-2xl font-bold">Renewals & Maintenance</h1>
-          <p className="text-sm text-muted-foreground">Recurring service visits, inspections and contract renewals.</p>
+          <h1 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
+            Renewals & Maintenance
+          </h1>
+          <p className="mt-0.5 text-[11px] text-slate-400">
+            Recurring service visits, inspections, and contract renewals
+          </p>
         </div>
+
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button size="sm"><Plus className="mr-2 h-4 w-4" />New reminder</Button>
+            <Button className="h-8 rounded-lg bg-cyan-500 px-3.5 text-[11px] font-bold text-slate-950 shadow-[0_0_20px_rgba(34,211,238,0.2)] transition-all hover:bg-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.35)] active:scale-[0.98]">
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              New Reminder
+            </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader><DialogTitle>Schedule a reminder</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <Input placeholder="Title, e.g. Annual gate service" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          <DialogContent className="border-white/[0.085] bg-[#10151d] text-slate-200 shadow-[0_18px_60px_rgba(0,0,0,0.4)] sm:max-w-lg">
+            <DialogHeader className="border-b border-white/[0.065] pb-3">
+              <DialogTitle className="text-sm font-bold text-white">
+                Schedule a Reminder
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 pt-2">
+              <Input
+                placeholder="Title, e.g. Annual gate service"
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                className="h-9 rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-200 placeholder:text-slate-500 focus:border-cyan-400/40 focus:ring-1 focus:ring-cyan-400/40"
+              />
               <div className="grid gap-3 sm:grid-cols-2">
                 <Select value={form.account_id} onValueChange={(v) => setForm({ ...form, account_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Client account" /></SelectTrigger>
-                  <SelectContent>{accounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent>
+                  <SelectTrigger className="h-9 rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-300">
+                    <SelectValue placeholder="Client account" />
+                  </SelectTrigger>
+                  <SelectContent className="border-white/[0.085] bg-[#10151d] text-slate-200">
+                    {accounts.map((a) => (
+                      <SelectItem key={a.id} value={a.id} className="text-[11px]">
+                        {a.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
+
                 <Select value={form.job_id} onValueChange={(v) => setForm({ ...form, job_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Related job" /></SelectTrigger>
-                  <SelectContent>{jobs.map((j) => <SelectItem key={j.id} value={j.id}>{j.job_number} · {j.client_name}</SelectItem>)}</SelectContent>
+                  <SelectTrigger className="h-9 rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-300">
+                    <SelectValue placeholder="Related job" />
+                  </SelectTrigger>
+                  <SelectContent className="border-white/[0.085] bg-[#10151d] text-slate-200">
+                    {jobs.map((j) => (
+                      <SelectItem key={j.id} value={j.id} className="text-[11px]">
+                        {j.job_number} · {j.client_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
+
                 <Select value={form.reminder_type} onValueChange={(v) => setForm({ ...form, reminder_type: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{REMINDER_TYPES.map((t) => <SelectItem key={t} value={t}>{label(t)}</SelectItem>)}</SelectContent>
+                  <SelectTrigger className="h-9 rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-300">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="border-white/[0.085] bg-[#10151d] text-slate-200">
+                    {REMINDER_TYPES.map((t) => (
+                      <SelectItem key={t} value={t} className="text-[11px]">
+                        {label(t)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
-                <Input type="date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} />
+
+                <Input
+                  type="date"
+                  value={form.due_date}
+                  onChange={(e) => setForm({ ...form, due_date: e.target.value })}
+                  className="h-9 rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-200 focus:border-cyan-400/40 focus:ring-1 focus:ring-cyan-400/40"
+                />
+
                 <Select value={form.recurrence_months} onValueChange={(v) => setForm({ ...form, recurrence_months: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0">One-off</SelectItem>
-                    <SelectItem value="1">Every month</SelectItem>
-                    <SelectItem value="3">Every 3 months</SelectItem>
-                    <SelectItem value="6">Every 6 months</SelectItem>
-                    <SelectItem value="12">Every 12 months</SelectItem>
+                  <SelectTrigger className="h-9 rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-300">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="border-white/[0.085] bg-[#10151d] text-slate-200">
+                    <SelectItem value="0" className="text-[11px]">One-off</SelectItem>
+                    <SelectItem value="1" className="text-[11px]">Every month</SelectItem>
+                    <SelectItem value="3" className="text-[11px]">Every 3 months</SelectItem>
+                    <SelectItem value="6" className="text-[11px]">Every 6 months</SelectItem>
+                    <SelectItem value="12" className="text-[11px]">Every 12 months</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <Textarea placeholder="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-              <Button className="w-full" onClick={create} disabled={busy || !form.title.trim()}>
-                {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Schedule
+
+              <Textarea
+                placeholder="Notes"
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                className="min-h-[80px] rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-200 placeholder:text-slate-500 focus:border-cyan-400/40 focus:ring-1 focus:ring-cyan-400/40"
+              />
+
+              <Button
+                className="w-full rounded-xl bg-cyan-500 font-bold text-slate-950 shadow-[0_0_20px_rgba(34,211,238,0.2)] hover:bg-cyan-400"
+                onClick={create}
+                disabled={busy || !form.title.trim()}
+              >
+                {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Schedule Reminder
               </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
+      {/* METRIC CARDS */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "Overdue", value: stats.overdue },
-          { label: "Due in 30 days", value: stats.due30 },
-          { label: "Scheduled", value: stats.scheduled },
-          { label: "Completed", value: stats.done },
+          { label: "Overdue", value: stats.overdue, valColor: "text-rose-300" },
+          { label: "Due in 30 days", value: stats.due30, valColor: "text-amber-300" },
+          { label: "Scheduled", value: stats.scheduled, valColor: "text-cyan-300" },
+          { label: "Completed", value: stats.done, valColor: "text-emerald-300" },
         ].map((k) => (
-          <Card key={k.label}>
-            <CardContent className="p-4">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">{k.label}</p>
-              <p className="mt-1 font-heading text-2xl font-bold">{k.value}</p>
-            </CardContent>
-          </Card>
+          <GlassCard key={k.label} className="p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              {k.label}
+            </p>
+            <p className={`mt-1 text-2xl font-bold tracking-tight ${k.valColor}`}>
+              {k.value}
+            </p>
+          </GlassCard>
         ))}
       </div>
 
-      <Card>
-        <CardHeader><CardTitle className="font-heading text-lg">Upcoming</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
+      {/* UPCOMING REMINDERS CARD */}
+      <GlassCard>
+        <div className="border-b border-white/[0.085] bg-white/[0.02] px-6 py-3.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            Upcoming Reminders
+          </span>
+        </div>
+
+        <div className="p-6 space-y-3">
           {loading ? (
-            <div className="flex h-24 items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+            <div className="flex h-32 items-center justify-center text-[11px] text-slate-400">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin text-cyan-400" />
+              Loading reminders...
+            </div>
           ) : rows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No reminders scheduled yet.</p>
+            <p className="py-6 text-center text-[11px] text-slate-500">
+              No reminders scheduled yet.
+            </p>
           ) : (
             rows.map((r) => {
               const overdue = r.status === "scheduled" && r.due_date < today();
               return (
-                <div key={r.id} className="flex flex-wrap items-center justify-between gap-3 rounded border p-3">
+                <div
+                  key={r.id}
+                  className="group flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] p-4 transition-all duration-200 hover:border-white/[0.15] hover:bg-white/[0.035]"
+                >
                   <div className="flex items-start gap-3">
-                    <CalendarClock className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                    <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" />
                     <div>
-                      <p className="text-sm font-medium">{r.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {accountName(r.account_id) || "Unlinked"} · {label(r.reminder_type)} · due {formatDate(r.due_date)}
+                      <p className="text-[12px] font-semibold text-slate-100">
+                        {r.title}
+                      </p>
+                      <p className="mt-0.5 text-[10px] text-slate-400">
+                        {accountName(r.account_id) || "Unlinked"} · {label(r.reminder_type)} · due{" "}
+                        <span className="font-mono text-slate-300">{formatDate(r.due_date)}</span>
                         {r.recurrence_months ? ` · repeats every ${r.recurrence_months} mo` : ""}
                       </p>
+                      {r.notes && (
+                        <p className="mt-1.5 text-[11px] text-slate-300">
+                          {r.notes}
+                        </p>
+                      )}
                     </div>
                   </div>
+
                   <div className="flex items-center gap-2">
-                    <Badge variant={overdue ? "destructive" : r.status === "scheduled" ? "outline" : "secondary"}>
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${getBadgeStyle(
+                        overdue,
+                        r.status
+                      )}`}
+                    >
                       {overdue ? "Overdue" : label(r.status)}
-                    </Badge>
+                    </span>
+
                     {r.status === "scheduled" && (
                       <>
-                        <Button size="sm" variant="outline" onClick={() => complete(r)}>
-                          {r.recurrence_months ? <RotateCw className="mr-1 h-3.5 w-3.5" /> : <Check className="mr-1 h-3.5 w-3.5" />}Done
+                        <Button
+                          size="sm"
+                          className="h-7 rounded-lg border border-white/[0.1] bg-white/[0.05] px-2.5 text-[10px] font-semibold text-slate-200 hover:bg-white/[0.1] hover:text-white"
+                          onClick={() => complete(r)}
+                        >
+                          {r.recurrence_months ? (
+                            <RotateCw className="mr-1 h-3 w-3 text-cyan-400" />
+                          ) : (
+                            <Check className="mr-1 h-3 w-3 text-emerald-400" />
+                          )}
+                          Done
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => cancel(r.id)}>Cancel</Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 rounded-lg px-2 text-[10px] text-slate-400 hover:bg-rose-500/10 hover:text-rose-300"
+                          onClick={() => cancel(r.id)}
+                        >
+                          Cancel
+                        </Button>
                       </>
                     )}
                   </div>
@@ -220,8 +368,8 @@ export default function ClientReminders() {
               );
             })
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
     </div>
   );
 }

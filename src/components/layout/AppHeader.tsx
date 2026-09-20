@@ -1,6 +1,7 @@
+import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { LogOut, Menu, Moon, Sun, Building2, ChevronDown, Search, Radio } from "lucide-react";
+import { LogOut, Menu, Moon, Sun, Building2, ChevronDown, Search, Radio, ExternalLink, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import NotificationPanel from "./NotificationPanel";
 import BackButton from "./BackButton";
@@ -8,6 +9,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { ROUTE_TITLES } from "@/lib/modules";
 import { useCopy } from "@/contexts/CopyContext";
 import { useBranding } from "@/contexts/BrandingContext";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface AppHeaderProps {
   onMenuToggle?: () => void;
@@ -20,6 +22,11 @@ export default function AppHeader({ onMenuToggle }: AppHeaderProps) {
   const { logoUrl } = useBranding();
   const { pathname } = useLocation();
   const navigate = useNavigate();
+
+  // Search autocomplete state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   const match =
     [...ROUTE_TITLES]
@@ -38,6 +45,31 @@ export default function AppHeader({ onMenuToggle }: AppHeaderProps) {
     .slice(0, 2)
     .join("")
     .toUpperCase();
+
+  // Filter routes based on query
+  const filteredRoutes = ROUTE_TITLES.filter((r) => {
+    const titleText = phrase(r.title).toLowerCase();
+    const pathText = r.path.toLowerCase();
+    const query = searchQuery.toLowerCase();
+    return titleText.includes(query) || pathText.includes(query);
+  }).slice(0, 6); // Limit results for a clean dropdown
+
+  // Close search dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setIsSearchOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSelectRoute = (path: string) => {
+    navigate(path);
+    setSearchQuery("");
+    setIsSearchOpen(false);
+  };
 
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-4 border-b border-white/[0.055] bg-[#080c11]/90 px-4 backdrop-blur-md md:px-6">
@@ -74,16 +106,61 @@ export default function AppHeader({ onMenuToggle }: AppHeaderProps) {
         </div>
       </div>
 
-      {/* CENTER SECTION: COMMAND SEARCH BAR */}
-      <div className="hidden max-w-xs flex-1 items-center md:flex">
+      {/* CENTER SECTION: COMMAND SEARCH BAR WITH AUTOCOMPLETE */}
+      <div className="hidden max-w-xs flex-1 items-center md:flex relative" ref={searchRef}>
         <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
           <input
             type="text"
-            placeholder="Search commands, jobs, data..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setIsSearchOpen(true);
+            }}
+            onFocus={() => setIsSearchOpen(true)}
+            placeholder="Search pages, navigation..."
             className="h-8 w-full rounded-lg border border-white/[0.075] bg-[#10151d] pl-8 pr-3 text-[11px] text-slate-300 placeholder-slate-600 outline-none transition focus:border-cyan-400/30 focus:bg-[#121824] focus:ring-1 focus:ring-cyan-400/30"
           />
         </div>
+
+        {/* AUTOCOMPLETE DROPDOWN */}
+        <AnimatePresence>
+          {isSearchOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: 4, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 4, scale: 0.98 }}
+              transition={{ duration: 0.15 }}
+              className="absolute left-0 right-0 top-10 z-50 overflow-hidden rounded-xl border border-white/10 bg-[#0d131d] shadow-2xl backdrop-blur-xl"
+            >
+              <div className="p-2 border-b border-white/[0.06] flex items-center justify-between text-[10px] text-slate-400 px-3">
+                <span>Available Pages</span>
+                <span className="text-cyan-400">{filteredResultsCount => filteredRoutes.length} found</span>
+              </div>
+              <div className="max-h-64 overflow-y-auto p-1.5 space-y-1">
+                {filteredRoutes.length > 0 ? (
+                  filteredRoutes.map((route) => (
+                    <button
+                      key={route.path}
+                      onClick={() => handleSelectRoute(route.path)}
+                      className="w-full flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-xs text-slate-300 hover:bg-cyan-500/10 hover:text-cyan-300 transition group"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium truncate group-hover:text-cyan-300">{phrase(route.title)}</p>
+                        <p className="text-[10px] text-slate-500 truncate">{route.path}</p>
+                      </div>
+                      <ArrowRight className="h-3 w-3 text-slate-600 group-hover:text-cyan-400 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                    </button>
+                  ))
+                ) : (
+                  <div className="py-6 text-center text-xs text-slate-500">
+                    No matching pages found for "{searchQuery}"
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* RIGHT SECTION: ACTIONS & PROFILE */}

@@ -4,9 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { AlertCircle, Check, Loader2, ShieldAlert, X } from "lucide-react";
+import { AlertCircle, Check, KeyRound, Loader2, ShieldAlert, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   PASSWORD_RULES,
   passwordStrength,
@@ -57,6 +57,32 @@ function decodeIssuedAt(jwt: string): number | null {
   } catch {
     return null;
   }
+}
+
+/* -------------------------------------------------------
+   BUSINESS OS GLASS CARD CONTAINER
+------------------------------------------------------- */
+function GlassCard({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`
+        relative overflow-hidden rounded-2xl
+        border border-white/[0.085]
+        bg-[#10151d]/95
+        shadow-[0_18px_60px_rgba(0,0,0,0.35)]
+        ${className}
+      `}
+    >
+      <div className="pointer-events-none absolute -right-20 -top-20 h-40 w-40 rounded-full bg-cyan-500/[0.04] blur-3xl" />
+      {children}
+    </div>
+  );
 }
 
 export default function ResetPassword() {
@@ -186,53 +212,75 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-primary px-4 py-10">
+    <div className="flex min-h-screen items-center justify-center bg-[#07090e] px-4 py-10 text-slate-200">
       <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <h1 className="font-heading text-4xl font-bold tracking-tight text-primary-foreground">
+        {/* BRAND HEADER */}
+        <div className="mb-8 text-center space-y-2">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-400/20 bg-cyan-500/10 text-cyan-400 shadow-inner mb-1"
+          >
+            <KeyRound className="h-6 w-6" />
+          </motion.div>
+          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl font-mono">
             MASTER FLOW
           </h1>
-          <p className="mt-2 text-sm text-primary-foreground/70">Set a new password</p>
+          <p className="text-xs text-slate-400">Set a new secure password</p>
         </div>
 
-        <Card className="border-0 shadow-lg">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-center text-xl">Reset Password</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <GlassCard>
+          {/* CARD HEADER */}
+          <div className="border-b border-white/[0.085] bg-white/[0.02] px-6 py-4">
+            <h2 className="text-center text-sm font-semibold uppercase tracking-wider text-slate-300">
+              Reset Password
+            </h2>
+          </div>
+
+          <div className="p-6">
             {success ? (
               <div className="space-y-4 text-center">
-                <div className="rounded bg-green-500/10 p-3 text-sm text-green-700">{success}</div>
-                <Button className="w-full" onClick={() => navigate("/login", { replace: true })}>
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs text-emerald-300">
+                  {success}
+                </div>
+                <Button
+                  className="w-full h-10 bg-cyan-500 text-slate-950 font-semibold hover:bg-cyan-400 transition-colors text-xs rounded-xl shadow-[0_0_15px_rgba(34,211,238,0.25)]"
+                  onClick={() => navigate("/login", { replace: true })}
+                >
                   Go to sign in
                 </Button>
               </div>
             ) : linkState === "checking" ? (
-              <div className="space-y-4 text-center text-sm text-muted-foreground">
-                <Loader2 className="mx-auto h-6 w-6 animate-spin text-accent" />
-                <p>Verifying your recovery link…</p>
+              <div className="space-y-4 text-center text-xs text-slate-400 py-6">
+                <Loader2 className="mx-auto h-6 w-6 animate-spin text-cyan-400" />
+                <p>Verifying your recovery link...</p>
               </div>
             ) : linkState === "invalid" ? (
-              <div className="space-y-4 text-center text-sm">
-                <div className="flex items-start gap-2 rounded bg-destructive/10 p-3 text-left text-destructive">
-                  <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+              <div className="space-y-4 text-center text-xs">
+                <div className="flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-left text-red-300">
+                  <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
                   <span>{linkError}</span>
                 </div>
-                <Button className="w-full" onClick={() => navigate("/login")}>
+                <Button
+                  className="w-full h-10 bg-cyan-500 text-slate-950 font-semibold hover:bg-cyan-400 transition-colors text-xs rounded-xl shadow-[0_0_15px_rgba(34,211,238,0.25)]"
+                  onClick={() => navigate("/login")}
+                >
                   Request a new reset link
                 </Button>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                 {error && (
-                  <div className="flex items-center gap-2 rounded bg-destructive/10 p-3 text-sm text-destructive">
-                    <AlertCircle className="h-4 w-4 shrink-0" />
+                  <div className="flex items-center gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-300">
+                    <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
                     {error}
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="new-password">New password</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="new-password" className="text-xs text-slate-300">
+                    New password
+                  </Label>
                   <Input
                     id="new-password"
                     type="password"
@@ -244,33 +292,36 @@ export default function ResetPassword() {
                     maxLength={72}
                     autoComplete="new-password"
                     aria-describedby="password-rules"
+                    className="h-10 rounded-xl border-white/[0.08] bg-[#0b0e14] text-slate-100 placeholder:text-slate-500 focus-visible:border-cyan-400/50 text-xs"
                   />
-                  <Progress value={strength.score} className="h-1.5" />
-                  <p className="text-xs text-muted-foreground">
-                    Password strength: <span className="font-medium">{strength.label}</span>
+                  <Progress value={strength.score} className="h-1.5 bg-white/10" />
+                  <p className="text-[11px] text-slate-400">
+                    Password strength: <span className="font-medium text-slate-200">{strength.label}</span>
                   </p>
                 </div>
 
-                <ul id="password-rules" className="space-y-1 text-xs">
+                <ul id="password-rules" className="space-y-1.5 text-xs pt-1">
                   {ruleResults.map((rule) => (
                     <li
                       key={rule.id}
                       className={
                         rule.ok
-                          ? "flex items-center gap-2 text-green-700"
+                          ? "flex items-center gap-2 text-emerald-400"
                           : touched || password.length > 0
-                            ? "flex items-center gap-2 text-destructive"
-                            : "flex items-center gap-2 text-muted-foreground"
+                            ? "flex items-center gap-2 text-red-400"
+                            : "flex items-center gap-2 text-slate-500"
                       }
                     >
                       {rule.ok ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
-                      {rule.label}
+                      <span>{rule.label}</span>
                     </li>
                   ))}
                 </ul>
 
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirm new password</Label>
+                <div className="space-y-1.5 pt-2">
+                  <Label htmlFor="confirm-password" className="text-xs text-slate-300">
+                    Confirm new password
+                  </Label>
                   <Input
                     id="confirm-password"
                     type="password"
@@ -281,32 +332,40 @@ export default function ResetPassword() {
                     required
                     maxLength={72}
                     autoComplete="new-password"
+                    className="h-10 rounded-xl border-white/[0.08] bg-[#0b0e14] text-slate-100 placeholder:text-slate-500 focus-visible:border-cyan-400/50 text-xs"
                   />
                   {confirm.length > 0 && confirm !== password && (
-                    <p className="text-xs text-destructive">Passwords do not match.</p>
+                    <p className="text-[11px] text-red-400">Passwords do not match.</p>
                   )}
                 </div>
 
-                {touched && validationErrors.length > 0 && (
-                  <ul className="space-y-1 rounded bg-destructive/10 p-3 text-xs text-destructive">
-                    {validationErrors.map((message) => (
-                      <li key={message}>{message}</li>
-                    ))}
-                  </ul>
-                )}
+                <AnimatePresence>
+                  {touched && validationErrors.length > 0 && (
+                    <motion.ul
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="space-y-1 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300 overflow-hidden"
+                    >
+                      {validationErrors.map((message) => (
+                        <li key={message}>{message}</li>
+                      ))}
+                    </motion.ul>
+                  )}
+                </AnimatePresence>
 
                 <Button
                   type="submit"
-                  className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+                  className="w-full h-10 bg-cyan-500 text-slate-950 font-semibold hover:bg-cyan-400 transition-colors text-xs rounded-xl shadow-[0_0_15px_rgba(34,211,238,0.25)] mt-2"
                   disabled={submitting || !canSubmit}
                 >
-                  {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {submitting && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
                   Update password
                 </Button>
               </form>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </GlassCard>
       </div>
     </div>
   );

@@ -1,27 +1,28 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import PageSkeleton from "@/components/ui/page-skeleton";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useCopy } from "@/contexts/CopyContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { AUTHORITY } from "@/lib/authority";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { STAGE_LABELS, STAGE_ORDER } from "@/lib/constants";
-import { Plus, Search, ChevronRight, Briefcase, Sparkles, Filter } from "lucide-react";
-import type { Tables } from "@/integrations/supabase/types";
-
-type Job = Tables<"jobs">;
-
-interface JobProgress {
-  pct: number;
-  done: number;
-  total: number;
-  currentName: string | null;
-}
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import BackButton from "@/components/layout/BackButton";
+import { toast } from "sonner";
+import { formatDateTime } from "@/lib/crm";
+import {
+  label,
+  loadClientAccounts,
+  loadJobsLite,
+  OPEN_TICKET_STATUSES,
+  TICKET_CATEGORIES,
+  TICKET_PRIORITIES,
+  TICKET_STATUSES,
+  type Ticket,
+} from "@/lib/clientSuccess";
+import { Filter, Loader2, Plus, Ticket as TicketIcon } from "lucide-react";
 
 /* -------------------------------------------------------
-   FUTURISTIC GLASS CONTAINER
+   BUSINESS OS GLASS CARD CONTAINER
 ------------------------------------------------------- */
 function GlassCard({
   children,
@@ -46,250 +47,322 @@ function GlassCard({
   );
 }
 
-export default function Jobs() {
-  const navigate = useNavigate();
-  const { hasRole, authority, user } = useAuth();
-  const { t, phrase } = useCopy();
-  const isSuperAdmin = hasRole("super_admin");
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [progress, setProgress] = useState<Record<string, JobProgress>>({});
+export default function SupportTickets() {
+  const { orgId, user } = useAuth();
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [accounts, setAccounts] = useState<{ id: string; name: string }[]>([]);
+  const [jobs, setJobs] = useState<{ id: string; job_number: string; client_name: string }[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState("open");
+  const [form, setForm] = useState({
+    subject: "",
+    description: "",
+    account_id: "",
+    job_id: "",
+    category: "general",
+    priority: "medium",
+  });
+
+  const reload = async () => {
+    const { data } = await supabase.from("support_tickets").select("*").order("created_at", { ascending: false });
+    setTickets(data || []);
+  };
 
   useEffect(() => {
-    const fetchJobs = async () => {
-      const { data } = await supabase
-        .from("jobs")
-        .select("*")
-        .order("created_at", { ascending: false });
-      let list = data || [];
-
-      // Field members only see the work they were handed.
-      if (authority <= AUTHORITY.FIELD && user) {
-        const { data: mine } = await supabase
-          .from("job_stages")
-          .select("job_id")
-          .or(`primary_owner_id.eq.${user.id},secondary_owner_id.eq.${user.id}`);
-        const allowed = new Set((mine || []).map((r: any) => r.job_id));
-        list = list.filter((j) => allowed.has(j.id));
-      }
-      setJobs(list);
-
-      if (list.length > 0) {
-        // Progress comes from the job's own SOP stages, not the legacy stage enum
-        const { data: stageRows } = await supabase
-          .from("job_stages")
-          .select("job_id, status, position, stage_name, stage")
-          .in(
-            "job_id",
-            list.map((j) => j.id)
-          )
-          .order("position");
-
-        const map: Record<string, JobProgress> = {};
-        (stageRows || []).forEach((row: any) => {
-          const entry = (map[row.job_id] ||= {
-            pct: 0,
-            done: 0,
-            total: 0,
-            currentName: null,
-          });
-          entry.total += 1;
-          if (row.status === "approved") entry.done += 1;
-          if (
-            !entry.currentName &&
-            row.status !== "approved" &&
-            row.status !== "locked"
-          ) {
-            entry.currentName =
-              row.stage_name || (row.stage ? STAGE_LABELS[row.stage] : null);
-          }
-        });
-        Object.values(map).forEach((e) => {
-          e.pct = e.total > 0 ? Math.round((e.done / e.total) * 100) : 0;
-        });
-        setProgress(map);
-      }
+    (async () => {
+      const [a, j] = await Promise.all([loadClientAccounts(), loadJobsLite()]);
+      setAccounts(a);
+      setJobs(j);
+      await reload();
       setLoading(false);
-    };
-    fetchJobs();
-  }, [authority, user]);
+    })();
+  }, [orgId]);
 
-  const filtered = jobs.filter(
-    (j) =>
-      j.client_name.toLowerCase().includes(search.toLowerCase()) ||
-      j.job_number.toLowerCase().includes(search.toLowerCase())
-  );
+  const visible = useMemo(() => {
+    if (filter === "all") return tickets;
+    if (filter === "open") return tickets.filter((t) => OPEN_TICKET_STATUSES.includes(t.status));
+    return tickets.filter((t) => t.status === filter);
+  }, [tickets, filter]);
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "active":
-        return "border-cyan-400/30 bg-cyan-400/10 text-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.15)]";
-      case "completed":
-        return "border-emerald-400/30 bg-emerald-400/10 text-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.15)]";
-      case "on_hold":
-        return "border-amber-400/30 bg-amber-400/10 text-amber-300 shadow-[0_0_12px_rgba(251,191,36,0.15)]";
-      case "cancelled":
+  const create = async () => {
+    if (!orgId || !form.subject.trim()) return;
+    setBusy(true);
+    const { error } = await supabase.from("support_tickets").insert({
+      org_id: orgId,
+      subject: form.subject.trim(),
+      description: form.description || null,
+      account_id: form.account_id || null,
+      job_id: form.job_id || null,
+      category: form.category,
+      priority: form.priority,
+      created_by: user?.id ?? null,
+    });
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("Ticket logged");
+    setOpen(false);
+    setForm({ subject: "", description: "", account_id: "", job_id: "", category: "general", priority: "medium" });
+    reload();
+  };
+
+  const update = async (id: string, patch: Partial<Ticket>) => {
+    const { error } = await supabase.from("support_tickets").update(patch).eq("id", id);
+    if (error) return toast.error(error.message);
+    reload();
+  };
+
+  const accountName = (id: string | null) => accounts.find((a) => a.id === id)?.name;
+
+  const counts = {
+    open: tickets.filter((t) => OPEN_TICKET_STATUSES.includes(t.status)).length,
+    urgent: tickets.filter((t) => t.priority === "urgent" && OPEN_TICKET_STATUSES.includes(t.status)).length,
+    resolved: tickets.filter((t) => t.status === "resolved" || t.status === "closed").length,
+    total: tickets.length,
+  };
+
+  const getPriorityBadge = (priority: string) => {
+    switch (priority) {
+      case "urgent":
         return "border-rose-400/30 bg-rose-400/10 text-rose-300 shadow-[0_0_12px_rgba(244,63,94,0.15)]";
+      case "high":
+        return "border-amber-400/30 bg-amber-400/10 text-amber-300 shadow-[0_0_12px_rgba(251,191,36,0.15)]";
       default:
-        return "border-slate-700 bg-slate-800 text-slate-300";
+        return "border-cyan-400/30 bg-cyan-400/10 text-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.15)]";
     }
   };
 
-  if (loading) {
-    return <PageSkeleton />;
-  }
-
   return (
     <div className="space-y-5 text-slate-200">
+      <BackButton />
+
       {/* HEADER BAR */}
-      <div className="flex items-center justify-between border-b border-white/[0.065] pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.065] pb-4">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
-            {t("work_items")}
+            Support Tickets
           </h1>
           <p className="mt-0.5 text-[11px] text-slate-400">
-            Real-time execution tracking and stage lifecycle management
+            Client issues, warranty calls, and incoming requests in one queue
           </p>
         </div>
 
-        {isSuperAdmin && (
-          <Button
-            onClick={() => navigate("/jobs/new")}
-            className="h-8.5 rounded-lg bg-cyan-500 px-3.5 text-[11px] font-bold text-slate-950 shadow-[0_0_20px_rgba(34,211,238,0.2)] transition-all hover:bg-cyan-400"
-          >
-            <Plus className="mr-1.5 h-3.5 w-3.5" />
-            New {t("work_item")}
-          </Button>
-        )}
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button
+              className="h-8 rounded-lg bg-cyan-500 px-3.5 text-[11px] font-bold text-slate-950 shadow-[0_0_20px_rgba(34,211,238,0.2)] transition-all hover:bg-cyan-400 hover:shadow-[0_0_25px_rgba(34,211,238,0.35)] active:scale-[0.98]"
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              New Ticket
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="border-white/[0.085] bg-[#10151d] text-slate-200 shadow-[0_18px_60px_rgba(0,0,0,0.4)] sm:max-w-lg">
+            <DialogHeader className="border-b border-white/[0.065] pb-3">
+              <DialogTitle className="text-sm font-bold text-white">
+                Log Support Ticket
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 pt-2">
+              <Input
+                placeholder="Subject"
+                value={form.subject}
+                onChange={(e) => setForm({ ...form, subject: e.target.value })}
+                className="h-9 rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-200 placeholder:text-slate-500 focus:border-cyan-400/40 focus:ring-1 focus:ring-cyan-400/40"
+              />
+              <Textarea
+                placeholder="Describe the issue..."
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                className="min-h-[90px] rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-200 placeholder:text-slate-500 focus:border-cyan-400/40 focus:ring-1 focus:ring-cyan-400/40"
+              />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Select value={form.account_id} onValueChange={(v) => setForm({ ...form, account_id: v })}>
+                  <SelectTrigger className="h-9 rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-300">
+                    <SelectValue placeholder="Client account" />
+                  </SelectTrigger>
+                  <SelectContent className="border-white/[0.085] bg-[#10151d] text-slate-200">
+                    {accounts.map((a) => (
+                      <SelectItem key={a.id} value={a.id} className="text-[11px]">
+                        {a.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={form.job_id} onValueChange={(v) => setForm({ ...form, job_id: v })}>
+                  <SelectTrigger className="h-9 rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-300">
+                    <SelectValue placeholder="Related job" />
+                  </SelectTrigger>
+                  <SelectContent className="border-white/[0.085] bg-[#10151d] text-slate-200">
+                    {jobs.map((j) => (
+                      <SelectItem key={j.id} value={j.id} className="text-[11px]">
+                        {j.job_number} · {j.client_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
+                  <SelectTrigger className="h-9 rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-300">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="border-white/[0.085] bg-[#10151d] text-slate-200">
+                    {TICKET_CATEGORIES.map((c) => (
+                      <SelectItem key={c} value={c} className="text-[11px]">
+                        {label(c)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
+                  <SelectTrigger className="h-9 rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-300">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="border-white/[0.085] bg-[#10151d] text-slate-200">
+                    {TICKET_PRIORITIES.map((p) => (
+                      <SelectItem key={p} value={p} className="text-[11px]">
+                        {label(p)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button
+                className="w-full rounded-xl bg-cyan-500 font-bold text-slate-950 shadow-[0_0_20px_rgba(34,211,238,0.2)] hover:bg-cyan-400"
+                onClick={create}
+                disabled={busy || !form.subject.trim()}
+              >
+                {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <TicketIcon className="mr-2 h-4 w-4" />}
+                Log Ticket
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {/* FILTER & SEARCH STRIP */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-          <Input
-            placeholder={phrase("Search by client or job number...")}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-9 rounded-xl border-white/[0.08] bg-[#10151d] pl-9 text-[11px] text-slate-200 placeholder:text-slate-500 focus:border-cyan-400/30 focus:ring-1 focus:ring-cyan-400/30"
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-            Total: {filtered.length}
-          </span>
-        </div>
+      {/* METRIC CARDS */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          { label: "Open Queue", value: counts.open, valColor: "text-cyan-300" },
+          { label: "Urgent Open", value: counts.urgent, valColor: "text-rose-300" },
+          { label: "Resolved / Closed", value: counts.resolved, valColor: "text-emerald-300" },
+          { label: "Total Tickets", value: counts.total, valColor: "text-white" },
+        ].map((k) => (
+          <GlassCard key={k.label} className="p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              {k.label}
+            </p>
+            <p className={`mt-1 text-2xl font-bold tracking-tight ${k.valColor}`}>
+              {k.value}
+            </p>
+          </GlassCard>
+        ))}
       </div>
 
-      {/* WORK ITEMS TABLE CARD */}
+      {/* MAIN QUEUE SECTION */}
       <GlassCard>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-white/[0.085] bg-white/[0.02] text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                <th className="px-6 py-4">Job #</th>
-                <th className="px-6 py-4">Client</th>
-                <th className="px-6 py-4">Service</th>
-                <th className="px-6 py-4">Current Stage</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4">Progress</th>
-                <th className="px-4 py-4 text-right"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/[0.05]">
-              {filtered.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="px-6 py-12 text-center text-[11px] text-slate-500"
-                  >
-                    No jobs matching your filter parameters.
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((job) => {
-                  const p = progress[job.id];
-                  const legacyIdx = STAGE_ORDER.indexOf(job.current_stage as any);
-                  const pct = p
-                    ? p.pct
-                    : Math.round(((legacyIdx + 1) / STAGE_ORDER.length) * 100);
-                  const done = p ? p.done : Math.max(legacyIdx, 0);
-                  const total = p ? p.total : STAGE_ORDER.length;
-                  const stageLabel =
-                    p?.currentName ??
-                    STAGE_LABELS[job.current_stage] ??
-                    job.current_stage;
+        {/* FILTER BAR */}
+        <div className="flex items-center justify-between border-b border-white/[0.085] bg-white/[0.02] px-6 py-3.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            Support Queue
+          </span>
 
-                  return (
-                    <tr
-                      key={job.id}
-                      onClick={() => navigate(`/jobs/${job.id}`)}
-                      className="group cursor-pointer transition-colors hover:bg-white/[0.025]"
+          <div className="flex items-center gap-2">
+            <Filter className="h-3.5 w-3.5 text-slate-400" />
+            <Select value={filter} onValueChange={setFilter}>
+              <SelectTrigger className="h-8 w-40 rounded-xl border-white/[0.08] bg-[#10151d] text-[11px] text-slate-200 focus:border-cyan-400/40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="border-white/[0.085] bg-[#10151d] text-slate-200">
+                <SelectItem value="open" className="text-[11px]">Open only</SelectItem>
+                <SelectItem value="all" className="text-[11px]">All tickets</SelectItem>
+                {TICKET_STATUSES.map((s) => (
+                  <SelectItem key={s} value={s} className="text-[11px]">
+                    {label(s)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* TICKET LIST */}
+        <div className="p-6 space-y-3">
+          {loading ? (
+            <div className="flex h-32 items-center justify-center text-[11px] text-slate-400">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin text-cyan-400" />
+              Loading tickets...
+            </div>
+          ) : visible.length === 0 ? (
+            <div className="py-8 text-center text-[11px] text-slate-500">
+              No support tickets found for this filter.
+            </div>
+          ) : (
+            visible.map((t) => (
+              <div
+                key={t.id}
+                className="group space-y-3 rounded-xl border border-white/[0.08] bg-white/[0.02] p-4 transition-all duration-200 hover:border-white/[0.15] hover:bg-white/[0.035]"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="text-[12px] font-semibold text-slate-100">
+                      <span className="font-mono text-cyan-400">#{t.ticket_number}</span> · {t.subject}
+                    </p>
+                    <p className="mt-0.5 text-[10px] text-slate-400">
+                      {accountName(t.account_id) || "No account"} · {label(t.category)} · {formatDateTime(t.created_at)}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${getPriorityBadge(
+                        t.priority
+                      )}`}
                     >
-                      {/* Job # */}
-                      <td className="px-6 py-4.5 font-mono text-[11px] font-semibold text-cyan-400">
-                        {job.job_number}
-                      </td>
+                      {label(t.priority)}
+                    </span>
 
-                      {/* Client Name */}
-                      <td className="px-6 py-4.5 text-[11px] font-semibold text-slate-100">
-                        {job.client_name}
-                      </td>
+                    <Select
+                      value={t.status}
+                      onValueChange={(v) =>
+                        update(t.id, {
+                          status: v,
+                          resolved_at: v === "resolved" || v === "closed" ? new Date().toISOString() : null,
+                        })
+                      }
+                    >
+                      <SelectTrigger className="h-7 w-36 rounded-lg border-white/[0.08] bg-[#10151d] text-[10px] font-medium text-slate-200">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="border-white/[0.085] bg-[#10151d] text-slate-200">
+                        {TICKET_STATUSES.map((s) => (
+                          <SelectItem key={s} value={s} className="text-[11px]">
+                            {label(s)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
 
-                      {/* Service Type */}
-                      <td className="px-6 py-4.5 text-[11px] text-slate-400">
-                        {job.service_type || "—"}
-                      </td>
+                {t.description && (
+                  <p className="rounded-lg border border-white/[0.05] bg-[#0b0e14] p-3 text-[11px] text-slate-300">
+                    {t.description}
+                  </p>
+                )}
 
-                      {/* Current Stage */}
-                      <td className="px-6 py-4.5">
-                        <span className="inline-flex items-center rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] font-medium text-slate-300">
-                          {stageLabel}
-                        </span>
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-6 py-4.5">
-                        <span
-                          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(
-                            job.status
-                          )}`}
-                        >
-                          {job.status}
-                        </span>
-                      </td>
-
-                      {/* Progress */}
-                      <td className="px-6 py-4.5">
-                        <div className="flex items-center gap-3">
-                          <div className="h-1.5 w-24 shrink-0 overflow-hidden rounded-full bg-white/[0.06]">
-                            <div
-                              className={`h-full rounded-full transition-all duration-700 ${
-                                pct === 100
-                                  ? "bg-gradient-to-r from-emerald-500 to-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.4)]"
-                                  : "bg-gradient-to-r from-blue-600 via-cyan-400 to-cyan-300 shadow-[0_0_10px_rgba(34,211,238,0.3)]"
-                              }`}
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                          <span className="whitespace-nowrap text-[10px] font-medium text-slate-400">
-                            {pct}% <span className="text-slate-600">·</span> {done}/{total}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Action Chevron */}
-                      <td className="px-4 py-4.5 text-right">
-                        <ChevronRight className="h-4 w-4 text-slate-600 transition-transform group-hover:translate-x-0.5 group-hover:text-cyan-400" />
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                <Textarea
+                  className="min-h-[60px] rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-200 placeholder:text-slate-500 focus:border-cyan-400/40"
+                  placeholder="Resolution notes"
+                  defaultValue={t.resolution ?? ""}
+                  onBlur={(e) => e.target.value !== (t.resolution ?? "") && update(t.id, { resolution: e.target.value || null })}
+                />
+              </div>
+            ))
+          )}
         </div>
       </GlassCard>
     </div>

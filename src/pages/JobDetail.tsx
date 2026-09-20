@@ -4,7 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { canEditStage, canEditQuoteStage } from "@/lib/authority";
 import { notifyQuoteEvent } from "@/lib/quoteNotifications";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -17,13 +19,11 @@ import {
   Loader2,
   RotateCcw,
   Save,
+  Shield,
+  Sparkles,
+  Terminal,
+  Zap,
   X,
-  User,
-  Phone,
-  Mail,
-  MapPin,
-  Briefcase,
-  ShieldAlert,
 } from "lucide-react";
 import { toast } from "sonner";
 import DynamicPipelineBar from "@/components/sop/DynamicPipelineBar";
@@ -90,33 +90,6 @@ interface StageMeta {
   secondaryRole: string | null;
 }
 
-/* -------------------------------------------------------
-   FUTURISTIC GLASS CONTAINER
-------------------------------------------------------- */
-function GlassCard({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div
-      className={`
-        relative overflow-hidden rounded-[14px]
-        border border-white/[0.085]
-        bg-[#10151d]/95
-        shadow-[0_18px_60px_rgba(0,0,0,0.24)]
-        backdrop-blur-md
-        ${className}
-      `}
-    >
-      <div className="pointer-events-none absolute -right-20 -top-20 h-40 w-40 rounded-full bg-cyan-500/[0.035] blur-3xl" />
-      {children}
-    </div>
-  );
-}
-
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -181,13 +154,14 @@ export default function JobDetail() {
 
   const current = useMemo(() => stages.find((s) => s.id === selectedId) ?? null, [stages, selectedId]);
 
-  // Steps named quotation / invoice / receipt always open the built-in finance form
+  // Steps named quotation / invoice / receipt always open the built-in finance
+  // form instead of the generic dynamic field form.
   const financeForm = useMemo(
     () => detectFinanceForm(current?.stage_name),
-    [current?.stage_name]
+    [current?.stage_name],
   );
 
-  // Client + business details captured earlier in the workflow
+  // Client + business details captured earlier in the workflow, reused by every money form.
   const [party, setParty] = useState<JobPartyDetails | null>(null);
   useEffect(() => {
     if (!job?.id) { setParty(null); return; }
@@ -196,11 +170,12 @@ export default function JobDetail() {
     return () => { alive = false; };
   }, [job?.id]);
 
-  // Load stage form state + custom fields
+  // Load stage form state + its custom fields
   useEffect(() => {
     if (!current) return;
     const draft = readDraft(current.id);
     if (draft && !draft.synced) {
+      // Unsent local edits win — the crew filled this in without signal.
       setFormData(draft.formData || {});
       setNotes(draft.notes || "");
       setRestoredDraft(draft);
@@ -247,7 +222,7 @@ export default function JobDetail() {
       );
   }, [current?.id]);
 
-  // Resolve stage owners
+  // Resolve the people currently responsible for this stage
   useEffect(() => {
     const ids = [current?.primary_owner_id, current?.secondary_owner_id].filter(Boolean) as string[];
     if (ids.length === 0) return;
@@ -263,6 +238,7 @@ export default function JobDetail() {
       );
   }, [current?.primary_owner_id, current?.secondary_owner_id]);
 
+  // Chain of command checks
   const canApprove = canEditStage(authority, current ?? null, user?.id);
   const isQuoteStep = financeForm === "quote";
   const canEdit =
@@ -270,6 +246,7 @@ export default function JobDetail() {
   const isStepOpen = !!current && current.status !== "locked" && current.status !== "approved";
   const lockedByAuthority = isStepOpen && !canEdit;
 
+  // Client sign-off
   const [clientDecision, setClientDecision] = useState<ClientDecision | null>(null);
   const isClientApprovalStep = needsClientApproval(current?.stage_name);
   const awaitingClient = isClientApprovalStep && clientDecision?.decision !== "approved";
@@ -298,6 +275,7 @@ export default function JobDetail() {
     setRestoredDraft(null);
   };
 
+  // Local draft keystroke sync
   useEffect(() => {
     if (!current || !dirty || !canEdit) return;
     const t = setTimeout(() => {
@@ -313,6 +291,7 @@ export default function JobDetail() {
     return () => clearTimeout(t);
   }, [current?.id, current?.job_id, formData, notes, dirty, canEdit]);
 
+  // Push offline drafts when reconnected
   useEffect(() => {
     if (!online) {
       wasOnline.current = false;
@@ -369,7 +348,7 @@ export default function JobDetail() {
           job.id,
           "ready_for_approval",
           `Quotation ready for approval on ${job.job_number}`,
-          `${job.client_name}: "${current.stage_name}" was completed and is waiting for approval.`
+          `${job.client_name}: "${current.stage_name}" was completed and is waiting for approval.`,
         );
       }
       await fetchJob();
@@ -446,7 +425,7 @@ export default function JobDetail() {
           job.id,
           "rejected",
           `Quotation rejected on ${job.job_number}`,
-          `${job.client_name}: "${current.stage_name}" was rejected. Reason: ${rejectionReason.trim()}`
+          `${job.client_name}: "${current.stage_name}" was rejected. Reason: ${rejectionReason.trim()}`,
         );
       }
       toast.success("Step rejected");
@@ -459,45 +438,68 @@ export default function JobDetail() {
     }
   };
 
-  const getStageStatusBadge = (status: string) => {
-    switch (status) {
-      case "approved":
-        return "border-emerald-400/30 bg-emerald-400/10 text-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.15)]";
-      case "rejected":
-        return "border-rose-400/30 bg-rose-400/10 text-rose-300 shadow-[0_0_12px_rgba(244,63,94,0.15)]";
-      case "locked":
-        return "border-slate-700 bg-slate-800/80 text-slate-400";
-      default:
-        return "border-cyan-400/30 bg-cyan-400/10 text-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.15)]";
-    }
-  };
-
   if (loading) return <JobDetailSkeleton />;
   if (legacy) return <LegacyJobDetail />;
-  if (!job) return <div className="py-20 text-center text-slate-500">Job not found.</div>;
+  if (!job) return <div className="py-20 text-center text-cyan-400/60 font-mono tracking-widest uppercase">Job record untraceable.</div>;
 
   const stageIndex = current ? [...stages].sort((a, b) => a.position - b.position).findIndex((s) => s.id === current.id) : 0;
 
   return (
-    <div className="space-y-5 text-slate-200">
-      {/* HEADER BAR */}
-      <div className="flex items-center gap-3 border-b border-white/[0.065] pb-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate("/jobs")}
-          className="h-8.5 w-8.5 rounded-lg border border-white/[0.085] bg-[#10151d] text-slate-400 hover:bg-white/[0.05] hover:text-white"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
-            <span className="font-mono text-cyan-400">{job.job_number}</span> — {job.client_name}
-          </h1>
-          <p className="mt-0.5 text-[11px] text-slate-400">
-            {job.service_type || "No service type"} <span className="text-slate-600">•</span> {job.client_location || "No location"}
-            {job.template_version ? ` • Workflow v${job.template_version}` : ""}
-          </p>
+    <div className="relative space-y-6 overflow-hidden rounded-xl bg-slate-950/90 p-4 sm:p-6 text-slate-100 shadow-[0_0_50px_rgba(6,182,212,0.1)] border border-cyan-500/20 backdrop-blur-xl">
+      {/* Dynamic Futuristic Visual FX Elements */}
+      <style>{`
+        @keyframes scanline {
+          0% { transform: translateY(-100%); }
+          100% { transform: translateY(1000%); }
+        }
+        @keyframes subtle-glow {
+          0%, 100% { opacity: 0.4; filter: drop-shadow(0 0 12px rgba(6, 182, 212, 0.4)); }
+          50% { opacity: 0.8; filter: drop-shadow(0 0 20px rgba(168, 85, 247, 0.6)); }
+        }
+        .animate-scan {
+          animation: scanline 8s linear infinite;
+        }
+        .animate-glow {
+          animation: subtle-glow 4s ease-in-out infinite;
+        }
+      `}</style>
+
+      {/* Cyber Grid Overlay Background */}
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#082f49_1px,transparent_1px),linear-gradient(to_bottom,#082f49_1px,transparent_1px)] bg-[size:2rem_2rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-25" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-cyan-500 to-transparent opacity-50 animate-scan" />
+
+      {/* Header Section */}
+      <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-cyan-500/20 pb-4">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => navigate("/jobs")}
+            className="border-cyan-500/40 bg-slate-900/80 text-cyan-400 hover:border-cyan-400 hover:bg-cyan-500/20 hover:shadow-[0_0_15px_rgba(6,182,212,0.5)] transition-all duration-300"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-2 w-2 rounded-full bg-cyan-400 animate-ping" />
+              <h1 className="font-mono text-2xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-purple-400">
+                {job.job_number}
+              </h1>
+              <span className="text-cyan-500/40 font-mono">//</span>
+              <span className="font-semibold text-slate-200 tracking-wide">{job.client_name}</span>
+            </div>
+            <p className="mt-1 font-mono text-xs tracking-widest text-cyan-400/70 uppercase flex items-center gap-2">
+              <Terminal className="h-3 w-3 text-cyan-400" />
+              {job.service_type || "Standard Node"} • {job.client_location || "Global Grid"}
+              {job.template_version ? ` • Workflow Core v${job.template_version}` : ""}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="border-cyan-500/40 bg-cyan-950/40 text-cyan-300 font-mono text-xs px-3 py-1 shadow-[0_0_10px_rgba(6,182,212,0.2)]">
+            <Sparkles className="mr-1 h-3 w-3 text-cyan-400" />
+            CYBER-FLOW ACTIVE
+          </Badge>
         </div>
       </div>
 
@@ -507,318 +509,335 @@ export default function JobDetail() {
 
       <JobLifecycleTrail jobId={job.id} />
 
-      {/* PIPELINE BAR CARD */}
-      <GlassCard className="p-4">
-        <DynamicPipelineBar
-          stages={stages
-            .slice()
-            .sort((a, b) => a.position - b.position)
-            .map((s) => ({
-              id: s.id,
-              name: s.stage_name || `Step ${s.position + 1}`,
-              status: s.status,
-              position: s.position,
-            }))}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-        />
-      </GlassCard>
+      {/* Dynamic Stage Navigation Bar */}
+      <Card className="relative overflow-hidden border-cyan-500/30 bg-slate-900/60 backdrop-blur-md shadow-[0_0_20px_rgba(6,182,212,0.1)]">
+        <div className="absolute top-0 right-0 h-16 w-16 bg-gradient-to-bl from-cyan-500/20 to-transparent pointer-events-none" />
+        <CardContent className="p-4">
+          <DynamicPipelineBar
+            stages={stages
+              .slice()
+              .sort((a, b) => a.position - b.position)
+              .map((s) => ({
+                id: s.id,
+                name: s.stage_name || `Step ${s.position + 1}`,
+                status: s.status,
+                position: s.position,
+              }))}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+          />
+        </CardContent>
+      </Card>
 
       {current && (
-        <div className="grid gap-5 lg:grid-cols-3">
-          {/* MAIN STAGE DETAILS & FORM */}
-          <GlassCard className="p-5 lg:col-span-2 space-y-5">
-            {/* STAGE TITLE BAR */}
-            <div className="flex items-center justify-between border-b border-white/[0.065] pb-3.5">
-              <h2 className="text-sm font-bold text-white tracking-tight">
-                Step {stageIndex + 1}: {current.stage_name}
-              </h2>
-              <span
-                className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${getStageStatusBadge(
-                  current.status
-                )}`}
-              >
-                {current.status}
-              </span>
-            </div>
-
-            {/* STAGE META / ROLES */}
-            {(stageMeta?.description ||
-              stageMeta?.primaryRole ||
-              current.primary_owner_id ||
-              stageMeta?.requires_approval) && (
-              <div className="space-y-2 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-[11px]">
-                {stageMeta?.description && (
-                  <p className="text-slate-400">{stageMeta.description}</p>
-                )}
-                <div className="flex flex-wrap gap-2 text-[10px]">
-                  <span className="inline-flex items-center rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 font-medium text-slate-300">
-                    Responsible: {stageMeta?.primaryRole || "Unassigned role"}
-                    {current.primary_owner_id && ownerNames[current.primary_owner_id]
-                      ? ` · ${ownerNames[current.primary_owner_id]}`
-                      : ""}
-                  </span>
-                  {(stageMeta?.secondaryRole || current.secondary_owner_id) && (
-                    <span className="inline-flex items-center rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 font-medium text-slate-300">
-                      Backup: {stageMeta?.secondaryRole || "Role"}
-                      {current.secondary_owner_id && ownerNames[current.secondary_owner_id]
-                        ? ` · ${ownerNames[current.secondary_owner_id]}`
-                        : ""}
-                    </span>
-                  )}
-                  {stageMeta?.requires_approval && (
-                    <span className="inline-flex items-center rounded-md border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 font-semibold text-cyan-300">
-                      Approval gate
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* SLA SECTION */}
-            <div className="space-y-2">
-              <SlaTimer
-                slaDeadlineHours={current.sla_deadline_hours}
-                slaStartedAt={current.sla_started_at}
-                status={current.status as any}
-              />
-              {isAdmin && (
-                <SlaDeadlineEditor
-                  stageId={current.id}
-                  currentHours={current.sla_deadline_hours}
-                  onUpdated={(h) =>
-                    setStages((prev) =>
-                      prev.map((s) => (s.id === current.id ? { ...s, sla_deadline_hours: h } : s))
-                    )
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Main Stage Execution Panel */}
+          <Card className="lg:col-span-2 relative border-cyan-500/30 bg-slate-900/70 backdrop-blur-lg shadow-[0_0_25px_rgba(0,0,0,0.5)]">
+            <CardHeader className="border-b border-cyan-500/10 bg-slate-950/40">
+              <div className="flex items-center justify-between">
+                <CardTitle className="font-mono text-lg font-bold text-cyan-300 flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-cyan-400 animate-pulse" />
+                  PHASE 0{stageIndex + 1}: <span className="text-slate-100">{current.stage_name}</span>
+                </CardTitle>
+                <Badge
+                  variant="outline"
+                  className={
+                    current.status === "approved"
+                      ? "border-emerald-500 bg-emerald-950/50 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.3)] font-mono"
+                      : current.status === "rejected"
+                      ? "border-rose-500 bg-rose-950/50 text-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.3)] font-mono"
+                      : current.status === "locked"
+                      ? "border-slate-600 bg-slate-800/50 text-slate-400 font-mono"
+                      : "border-cyan-400 bg-cyan-950/50 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.4)] animate-glow font-mono"
                   }
-                />
-              )}
-            </div>
-
-            {/* DYNAMIC FORMS */}
-            {financeForm === "quote" ? (
-              <QuotationPrepForm
-                formData={formData}
-                onChange={(d) => {
-                  setFormData(d);
-                  setDirty(true);
-                }}
-                readOnly={!canEdit}
-                jobId={job.id}
-                stageId={current.id}
-                onQuoteConfirm={setQuoteConfirmed}
-                pdfOpen={pdfOpen}
-                onPdfOpenChange={setPdfOpen}
-              />
-            ) : financeForm ? (
-              <InvoicingForm
-                mode={financeForm}
-                formData={formData}
-                onChange={(d) => {
-                  setFormData(d);
-                  setDirty(true);
-                }}
-                readOnly={!canEdit}
-                jobId={job.id}
-                stageId={current.id}
-              />
-            ) : (
-              <DynamicStageForm
-                fields={fields}
-                formData={formData}
-                onChange={(d) => {
-                  setFormData(d);
-                  setDirty(true);
-                }}
-                readOnly={!canEdit}
-                jobId={job.id}
-              />
-            )}
-
-            {/* NOTES */}
-            {canEdit ? (
-              <div className="space-y-2 border-t border-white/[0.085] pt-4">
-                <Label className="text-[11px] font-semibold text-slate-300">Step Notes</Label>
-                <Textarea
-                  value={notes}
-                  onChange={(e) => {
-                    setNotes(e.target.value);
-                    setDirty(true);
-                  }}
-                  placeholder="Add notes, observations or comments..."
-                  rows={3}
-                  className="rounded-xl border-white/[0.08] bg-[#10151d] text-[11px] text-slate-200 placeholder:text-slate-500 focus:border-cyan-400/30 focus:ring-1 focus:ring-cyan-400/30"
-                />
-              </div>
-            ) : (
-              current.notes && (
-                <div className="space-y-1 border-t border-white/[0.085] pt-4">
-                  <Label className="text-[11px] font-semibold text-slate-400">Notes</Label>
-                  <p className="text-[11px] text-slate-300">{current.notes}</p>
-                </div>
-              )
-            )}
-
-            {/* WARNING & OFFLINE NOTICES */}
-            {lockedByAuthority && (
-              <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-[11px] text-amber-300 shadow-[0_0_12px_rgba(251,191,36,0.1)]">
-                <p className="font-semibold">Read-only for you</p>
-                <p className="mt-0.5 text-amber-300/80">
-                  This step is assigned to someone else. Only its owner, a manager or the administration board can fill it in.
-                </p>
-              </div>
-            )}
-
-            {!online && (
-              <div className="flex items-start gap-2.5 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-[11px] text-amber-300 shadow-[0_0_12px_rgba(251,191,36,0.1)]">
-                <CloudOff className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" />
-                <div>
-                  <p className="font-semibold">You are offline</p>
-                  <p className="mt-0.5 text-amber-300/80">
-                    Keep filling this step in — everything is stored on this device and syncs automatically once you have signal again.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {restoredDraft && (
-              <div className="flex items-start gap-2.5 rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-3 text-[11px] text-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.1)]">
-                <RotateCcw className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan-300" />
-                <div>
-                  <p className="font-semibold">Restored offline draft</p>
-                  <p className="mt-0.5 text-cyan-300/80">
-                    Unsent changes from {formatDraftAge(restoredDraft.savedAt)} were loaded back into this step.{" "}
-                    <button
-                      type="button"
-                      className="underline underline-offset-2 hover:text-cyan-200"
-                      onClick={() => {
-                        clearDraft(restoredDraft.stageId);
-                        setFormData((current.form_data as Record<string, any>) || {});
-                        setNotes(current.notes || "");
-                        setRestoredDraft(null);
-                        setQueuedOffline(false);
-                        setDirty(false);
-                      }}
-                    >
-                      Discard draft
-                    </button>
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {current.rejection_reason && (
-              <div className="rounded-xl border border-rose-400/30 bg-rose-400/10 p-3 text-[11px] text-rose-300 shadow-[0_0_12px_rgba(244,63,94,0.1)]">
-                <p className="font-semibold text-rose-300">Rejection reason:</p>
-                <p className="mt-0.5 text-rose-300/80">{current.rejection_reason}</p>
-              </div>
-            )}
-
-            {/* STAGE CONTROLS */}
-            {canEdit && (
-              <div className="sticky bottom-2 z-10 mt-3 rounded-xl border border-white/[0.085] bg-[#10151d]/90 p-3.5 shadow-[0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-md">
-                <div className="mb-2.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-                  Stage controls
-                </div>
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <Button
-                    onClick={handleSave}
-                    disabled={saving || !dirty}
-                    className="h-8.5 rounded-lg border border-white/[0.1] bg-white/[0.04] px-3.5 text-[11px] font-semibold text-slate-200 hover:bg-white/[0.08] disabled:opacity-50"
-                  >
-                    {saving ? (
-                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Save className="mr-1.5 h-3.5 w-3.5" />
-                    )}
-                    {online ? "Save Progress" : "Save on this device"}
-                  </Button>
-
-                  {queuedOffline && (
-                    <span className="text-[10px] font-semibold text-amber-300">
-                      Draft waiting to sync
-                    </span>
-                  )}
-
-                  {financeForm === "quote" && (
-                    <Button
-                      onClick={() => setPdfOpen(true)}
-                      className="h-8.5 rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3.5 text-[11px] font-bold text-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.15)] hover:bg-cyan-400/20"
-                    >
-                      <FileDown className="mr-1.5 h-3.5 w-3.5" />
-                      Preview &amp; send PDF
-                    </Button>
-                  )}
-
-                  {canApprove && (
-                    <>
-                      <Button
-                        onClick={handleApprove}
-                        disabled={approving || awaitingClient || (financeForm === "quote" && !quoteConfirmed)}
-                        className="h-8.5 rounded-lg border border-emerald-400/30 bg-emerald-400/20 px-3.5 text-[11px] font-bold text-emerald-300 shadow-[0_0_16px_rgba(52,211,153,0.2)] transition-all hover:bg-emerald-400 hover:text-slate-950 disabled:opacity-50"
-                      >
-                        {approving ? (
-                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Check className="mr-1.5 h-3.5 w-3.5" />
-                        )}
-                        Approve &amp; Advance
-                      </Button>
-
-                      <Button
-                        onClick={() => setShowReject((v) => !v)}
-                        className="h-8.5 rounded-lg border border-rose-400/30 bg-rose-400/10 px-3.5 text-[11px] font-bold text-rose-300 shadow-[0_0_12px_rgba(244,63,94,0.15)] hover:bg-rose-400/20"
-                      >
-                        <X className="mr-1.5 h-3.5 w-3.5" />
-                        Reject
-                      </Button>
-                    </>
-                  )}
-                </div>
-
-                {isQuoteStep && !canApprove && (
-                  <p className="mt-2 text-[10px] text-slate-400">
-                    You can prepare and send this quotation. Final approval stays with the assigned owner, a manager or the board.
-                  </p>
-                )}
-                {awaitingClient && canApprove && (
-                  <p className="mt-2 text-[10px] font-semibold text-amber-300">
-                    This step needs the client's own approval first — send them the tracking link and their client ID from the panel on the right.
-                  </p>
-                )}
-                {financeForm === "quote" && !quoteConfirmed && (
-                  <p className="mt-2 text-[10px] text-slate-400">
-                    Confirm the quote above before approving this step.
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* REJECTION PANEL */}
-            {showReject && canApprove && (
-              <div className="space-y-3 rounded-xl border border-rose-400/30 bg-rose-400/5 p-4 text-[11px]">
-                <Label className="text-[11px] font-semibold text-rose-300">Reason for rejection *</Label>
-                <Textarea
-                  value={rejectionReason}
-                  onChange={(e) => setRejectionReason(e.target.value)}
-                  rows={3}
-                  className="rounded-xl border-rose-400/30 bg-[#10151d] text-[11px] text-slate-200 placeholder:text-slate-500 focus:border-rose-400/50 focus:ring-1 focus:ring-rose-400/50"
-                />
-                <Button
-                  onClick={handleReject}
-                  disabled={rejecting || !rejectionReason.trim()}
-                  className="h-8.5 rounded-lg border border-rose-400/30 bg-rose-500 px-3.5 text-[11px] font-bold text-slate-950 shadow-[0_0_16px_rgba(244,63,94,0.2)] hover:bg-rose-400 disabled:opacity-50"
                 >
-                  {rejecting && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-                  Confirm Rejection
-                </Button>
+                  {current.status.toUpperCase()}
+                </Badge>
               </div>
-            )}
-          </GlassCard>
+            </CardHeader>
 
-          {/* SIDEBAR PANELS */}
-          <div className="space-y-5">
+            <CardContent className="space-y-6 pt-6">
+              {(stageMeta?.description ||
+                stageMeta?.primaryRole ||
+                current.primary_owner_id ||
+                stageMeta?.requires_approval) && (
+                <div className="space-y-2 rounded-lg border border-cyan-500/20 bg-cyan-950/20 p-4 shadow-inner">
+                  {stageMeta?.description && (
+                    <p className="text-sm font-sans text-cyan-200/80">{stageMeta.description}</p>
+                  )}
+                  <div className="flex flex-wrap gap-2 text-xs font-mono">
+                    <Badge variant="outline" className="border-cyan-500/40 bg-slate-900 text-cyan-300">
+                      Primary Operator: {stageMeta?.primaryRole || "Unassigned"}
+                      {current.primary_owner_id && ownerNames[current.primary_owner_id]
+                        ? ` [${ownerNames[current.primary_owner_id]}]`
+                        : ""}
+                    </Badge>
+                    {(stageMeta?.secondaryRole || current.secondary_owner_id) && (
+                      <Badge variant="outline" className="border-cyan-500/30 bg-slate-900 text-cyan-400/80">
+                        Auxiliary: {stageMeta?.secondaryRole || "Role"}
+                        {current.secondary_owner_id && ownerNames[current.secondary_owner_id]
+                          ? ` [${ownerNames[current.secondary_owner_id]}]`
+                          : ""}
+                      </Badge>
+                    )}
+                    {stageMeta?.requires_approval && (
+                      <Badge variant="outline" className="border-purple-500/50 bg-purple-950/30 text-purple-300 shadow-[0_0_8px_rgba(168,85,247,0.3)]">
+                        <Shield className="mr-1 h-3 w-3" /> Authorization Gate
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2 rounded-lg border border-cyan-500/10 bg-slate-950/40 p-3">
+                <SlaTimer
+                  slaDeadlineHours={current.sla_deadline_hours}
+                  slaStartedAt={current.sla_started_at}
+                  status={current.status as any}
+                />
+                {isAdmin && (
+                  <SlaDeadlineEditor
+                    stageId={current.id}
+                    currentHours={current.sla_deadline_hours}
+                    onUpdated={(h) =>
+                      setStages((prev) =>
+                        prev.map((s) => (s.id === current.id ? { ...s, sla_deadline_hours: h } : s))
+                      )
+                    }
+                  />
+                )}
+              </div>
+
+              {/* Dynamic / Built-in Forms Wrapper */}
+              <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-4 shadow-xl">
+                {financeForm === "quote" ? (
+                  <QuotationPrepForm
+                    formData={formData}
+                    onChange={(d) => {
+                      setFormData(d);
+                      setDirty(true);
+                    }}
+                    readOnly={!canEdit}
+                    jobId={job.id}
+                    stageId={current.id}
+                    onQuoteConfirm={setQuoteConfirmed}
+                    pdfOpen={pdfOpen}
+                    onPdfOpenChange={setPdfOpen}
+                  />
+                ) : financeForm ? (
+                  <InvoicingForm
+                    mode={financeForm}
+                    formData={formData}
+                    onChange={(d) => {
+                      setFormData(d);
+                      setDirty(true);
+                    }}
+                    readOnly={!canEdit}
+                    jobId={job.id}
+                    stageId={current.id}
+                  />
+                ) : (
+                  <DynamicStageForm
+                    fields={fields}
+                    formData={formData}
+                    onChange={(d) => {
+                      setFormData(d);
+                      setDirty(true);
+                    }}
+                    readOnly={!canEdit}
+                    jobId={job.id}
+                  />
+                )}
+              </div>
+
+              {canEdit ? (
+                <div className="space-y-2 border-t border-cyan-500/20 pt-4">
+                  <Label className="font-mono text-xs text-cyan-400 uppercase tracking-wider">Mission Log / Operator Notes</Label>
+                  <Textarea
+                    value={notes}
+                    onChange={(e) => {
+                      setNotes(e.target.value);
+                      setDirty(true);
+                    }}
+                    placeholder="Input system observations, operation notes, or diagnostic comments..."
+                    rows={3}
+                    className="border-cyan-500/30 bg-slate-950/80 font-mono text-xs text-slate-200 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400"
+                  />
+                </div>
+              ) : (
+                current.notes && (
+                  <div className="space-y-1 border-t border-cyan-500/20 pt-4">
+                    <Label className="font-mono text-xs text-cyan-400 uppercase">Operator Notes</Label>
+                    <p className="text-sm font-mono text-slate-300 bg-slate-950/60 p-3 rounded border border-slate-800">{current.notes}</p>
+                  </div>
+                )
+              )}
+
+              {lockedByAuthority && (
+                <div className="rounded-lg border border-amber-500/40 bg-amber-950/20 p-3 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.1)]">
+                  <p className="text-sm font-bold font-mono">ACCESS RESTRICTED: READ-ONLY MODE</p>
+                  <p className="text-xs text-amber-200/70">
+                    Operation assigned to designated authority. Only assigned node operators or workspace admins hold write credentials.
+                  </p>
+                </div>
+              )}
+
+              {!online && (
+                <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-950/30 p-3 text-amber-300">
+                  <CloudOff className="mt-0.5 h-4 w-4 text-amber-400" />
+                  <div>
+                    <p className="text-sm font-bold font-mono">NETWORK LINK OFFLINE</p>
+                    <p className="text-xs text-amber-200/70">
+                      Local telemetry buffer active. Edits will sync automatically upon grid reconnection.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {restoredDraft && (
+                <div className="flex items-start gap-2 rounded-lg border border-cyan-500/40 bg-cyan-950/30 p-3 text-cyan-300">
+                  <RotateCcw className="mt-0.5 h-4 w-4 text-cyan-400 animate-spin" />
+                  <div>
+                    <p className="text-sm font-bold font-mono">OFFLINE DRAFT RECOVERED</p>
+                    <p className="text-xs text-cyan-200/70">
+                      Restored local edits from {formatDraftAge(restoredDraft.savedAt)}.{" "}
+                      <button
+                        type="button"
+                        className="text-cyan-400 underline underline-offset-2 hover:text-cyan-200"
+                        onClick={() => {
+                          clearDraft(restoredDraft.stageId);
+                          setFormData((current.form_data as Record<string, any>) || {});
+                          setNotes(current.notes || "");
+                          setRestoredDraft(null);
+                          setQueuedOffline(false);
+                          setDirty(false);
+                        }}
+                      >
+                        Purge Local Cache
+                      </button>
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {current.rejection_reason && (
+                <div className="rounded-lg border border-rose-500/40 bg-rose-950/20 p-3 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.1)]">
+                  <p className="text-sm font-bold font-mono text-rose-400">REJECTION LOG DETECTED:</p>
+                  <p className="text-sm font-mono text-rose-200/90">{current.rejection_reason}</p>
+                </div>
+              )}
+
+              {/* Cyber Command Control Dock */}
+              {canEdit && (
+                <div className="sticky bottom-2 z-20 mt-4 rounded-xl border border-cyan-500/40 bg-slate-950/90 p-4 shadow-[0_0_30px_rgba(6,182,212,0.25)] backdrop-blur-xl">
+                  <div className="mb-3 flex items-center justify-between text-[10px] font-mono uppercase tracking-[0.2em] text-cyan-400">
+                    <span className="flex items-center gap-2">
+                      <span className="h-2 w-2 animate-ping rounded-full bg-cyan-400" />
+                      Command Module Active
+                    </span>
+                    {dirty && <span className="text-amber-400 animate-pulse">[UNSAVED DATA]</span>}
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <Button
+                      onClick={handleSave}
+                      disabled={saving || !dirty}
+                      variant="outline"
+                      className="border-cyan-500/50 bg-slate-900 text-cyan-300 hover:bg-cyan-500/20 hover:border-cyan-400 hover:shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all font-mono"
+                    >
+                      {saving ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="mr-2 h-4 w-4" />
+                      )}
+                      {online ? "Commit Changes" : "Save to Buffer"}
+                    </Button>
+
+                    {queuedOffline && (
+                      <span className="self-center font-mono text-xs text-amber-400 animate-pulse">
+                        Local cache pending sync...
+                      </span>
+                    )}
+
+                    {financeForm === "quote" && (
+                      <Button
+                        variant="outline"
+                        onClick={() => setPdfOpen(true)}
+                        className="border-purple-500/50 bg-slate-900 text-purple-300 hover:bg-purple-500/20 hover:border-purple-400 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] transition-all font-mono"
+                      >
+                        <FileDown className="mr-2 h-4 w-4" />
+                        Generate &amp; Transmit PDF
+                      </Button>
+                    )}
+
+                    {canApprove && (
+                      <>
+                        <Button
+                          onClick={handleApprove}
+                          disabled={approving || awaitingClient || (financeForm === "quote" && !quoteConfirmed)}
+                          className="bg-gradient-to-r from-emerald-600 to-teal-500 text-white hover:from-emerald-500 hover:to-teal-400 shadow-[0_0_20px_rgba(16,185,129,0.4)] font-mono font-bold transition-all"
+                        >
+                          {approving ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Check className="mr-2 h-4 w-4" />
+                          )}
+                          Authorize &amp; Advance
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowReject((v) => !v)}
+                          className="border-rose-500/50 bg-slate-900 text-rose-400 hover:bg-rose-500/20 hover:border-rose-400 hover:shadow-[0_0_15px_rgba(244,63,94,0.4)] transition-all font-mono"
+                        >
+                          <X className="mr-2 h-4 w-4" />
+                          Reject
+                        </Button>
+                      </>
+                    )}
+                  </div>
+
+                  {isQuoteStep && !canApprove && (
+                    <p className="mt-2 text-xs font-mono text-cyan-400/70">
+                      Draft permissions granted. Final authorization required by stage lead.
+                    </p>
+                  )}
+                  {awaitingClient && canApprove && (
+                    <p className="mt-2 text-xs font-mono text-amber-400">
+                      Awaiting client authorization token before system advance.
+                    </p>
+                  )}
+                  {financeForm === "quote" && !quoteConfirmed && (
+                    <p className="mt-2 text-xs font-mono text-amber-400">
+                      Quotation confirmation flag required prior to approval.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {showReject && canApprove && (
+                <div className="space-y-3 rounded-xl border border-rose-500/40 bg-rose-950/30 p-4 shadow-[0_0_20px_rgba(244,63,94,0.2)]">
+                  <Label className="font-mono text-xs text-rose-400 uppercase">Reason for Rejection Protocol *</Label>
+                  <Textarea
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    rows={3}
+                    className="border-rose-500/30 bg-slate-950 font-mono text-xs text-slate-100 focus:border-rose-400"
+                  />
+                  <Button
+                    onClick={handleReject}
+                    disabled={rejecting || !rejectionReason.trim()}
+                    variant="destructive"
+                    className="bg-rose-600 font-mono shadow-[0_0_15px_rgba(244,63,94,0.4)] hover:bg-rose-500"
+                  >
+                    {rejecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Confirm Rejection Directive
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Right Column: Client Side Panels */}
+          <div className="space-y-6">
             {isClientApprovalStep && current.status !== "locked" && (
               <ClientApprovalPanel
                 key={current.id}
@@ -833,84 +852,67 @@ export default function JobDetail() {
               />
             )}
 
-            <GlassCard className="p-5 space-y-4">
-              <div className="border-b border-white/[0.065] pb-3">
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                  Client Details
-                </h3>
-              </div>
-
-              <div className="space-y-3 text-[11px]">
-                <div className="flex items-start gap-2.5">
-                  <User className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
-                  <div>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-wider">Name</p>
-                    <p className="font-semibold text-slate-100">{job.client_name}</p>
-                  </div>
+            <Card className="relative overflow-hidden border-cyan-500/30 bg-slate-900/70 backdrop-blur-lg shadow-[0_0_20px_rgba(0,0,0,0.5)]">
+              <CardHeader className="border-b border-cyan-500/10 bg-slate-950/40">
+                <CardTitle className="font-mono text-lg font-bold text-cyan-300 flex items-center gap-2">
+                  <Terminal className="h-4 w-4 text-cyan-400" />
+                  CLIENT RECORD
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-4 text-sm font-mono">
+                <div className="rounded border border-slate-800 bg-slate-950/50 p-2">
+                  <p className="text-xs text-cyan-500/70 uppercase">Client ID</p>
+                  <p className="font-semibold text-slate-200">{job.client_name}</p>
                 </div>
-
-                <div className="flex items-start gap-2.5">
-                  <Phone className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
-                  <div>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-wider">Phone</p>
-                    <p className="font-semibold text-slate-100">{job.client_phone || "—"}</p>
-                  </div>
+                <div className="rounded border border-slate-800 bg-slate-950/50 p-2">
+                  <p className="text-xs text-cyan-500/70 uppercase">Comms Line</p>
+                  <p className="font-semibold text-slate-200">{job.client_phone || "N/A"}</p>
                 </div>
-
-                <div className="flex items-start gap-2.5">
-                  <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
-                  <div>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-wider">Email</p>
-                    <p className="font-semibold text-slate-100">{job.client_email || "—"}</p>
-                  </div>
+                <div className="rounded border border-slate-800 bg-slate-950/50 p-2">
+                  <p className="text-xs text-cyan-500/70 uppercase">Digital Address</p>
+                  <p className="font-semibold text-slate-200 truncate">{job.client_email || "N/A"}</p>
                 </div>
-
-                <div className="flex items-start gap-2.5">
-                  <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
-                  <div>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-wider">Location</p>
-                    <p className="font-semibold text-slate-100">{job.client_location || "—"}</p>
-                  </div>
+                <div className="rounded border border-slate-800 bg-slate-950/50 p-2">
+                  <p className="text-xs text-cyan-500/70 uppercase">Grid Coordinates</p>
+                  <p className="font-semibold text-slate-200">{job.client_location || "N/A"}</p>
                 </div>
-
-                <div className="flex items-start gap-2.5">
-                  <Briefcase className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
-                  <div>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-wider">Service Type</p>
-                    <p className="font-semibold text-slate-100">{job.service_type || "—"}</p>
-                  </div>
+                <div className="rounded border border-slate-800 bg-slate-950/50 p-2">
+                  <p className="text-xs text-cyan-500/70 uppercase">Service Directive</p>
+                  <p className="font-semibold text-slate-200">{job.service_type || "N/A"}</p>
                 </div>
 
                 {job.tracking_token && (
-                  <div className="border-t border-white/[0.085] pt-3">
-                    <p className="text-[10px] text-slate-400 uppercase tracking-wider">
-                      Client Tracking Link
-                    </p>
-                    <div className="mt-2 flex items-center gap-2">
+                  <div className="border-t border-cyan-500/20 pt-3">
+                    <p className="text-xs text-cyan-400 uppercase mb-2">Live Tracking Uplink</p>
+                    <div className="flex flex-col gap-2">
                       <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-cyan-500/40 bg-slate-950 text-cyan-300 hover:bg-cyan-500/20 hover:border-cyan-400 transition-all text-xs font-mono"
                         onClick={() => {
                           navigator.clipboard.writeText(
                             `${window.location.origin}/track?token=${job.tracking_token}`
                           );
-                          toast.success("Tracking link copied!");
+                          toast.success("Uplink URI copied to clipboard");
                         }}
-                        className="h-7.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[10px] font-medium text-slate-200 hover:bg-white/[0.06]"
                       >
-                        <Copy className="mr-1.5 h-3 w-3 text-cyan-400" /> Copy Link
+                        <Copy className="mr-2 h-3 w-3 text-cyan-400" /> Copy Tracking Link
                       </Button>
                       <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-cyan-400/80 hover:text-cyan-200 hover:bg-cyan-950/40 text-xs font-mono"
                         onClick={() =>
                           window.open(`${window.location.origin}/track?token=${job.tracking_token}`, "_blank")
                         }
-                        className="h-7.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[10px] font-medium text-slate-200 hover:bg-white/[0.06]"
                       >
-                        <ExternalLink className="mr-1.5 h-3 w-3 text-cyan-400" /> Preview
+                        <ExternalLink className="mr-2 h-3 w-3" /> Preview Uplink
                       </Button>
                     </div>
                   </div>
                 )}
-              </div>
-            </GlassCard>
+              </CardContent>
+            </Card>
           </div>
         </div>
       )}

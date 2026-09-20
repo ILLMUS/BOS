@@ -22,6 +22,8 @@ import {
   Smartphone,
   MonitorSmartphone,
   Clock,
+  PlayCircle,
+  Send,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -35,6 +37,7 @@ import {
 import { STAGE_LABELS, STAGE_ORDER } from "@/lib/constants";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Database } from "@/integrations/supabase/types";
+import { motion, AnimatePresence } from "framer-motion";
 
 type JobStage = Database["public"]["Enums"]["job_stage"];
 
@@ -65,29 +68,41 @@ function ChannelMatrix({
   plan: ReturnType<typeof deliveryPlan>;
 }) {
   return (
-    <div className="mt-2 space-y-1.5">
+    <div className="mt-2.5 space-y-2 border-t border-white/[0.06] pt-2.5">
       {plan.map((c) => {
         const Icon = CHANNEL_ICONS[c.channel];
         return (
-          <div key={c.channel} className="flex items-start justify-between gap-2">
-            <div className="flex min-w-0 items-start gap-2">
+          <div key={c.channel} className="flex items-center justify-between gap-2 min-w-0">
+            <div className="flex min-w-0 items-center gap-2">
               <Icon
-                className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${c.willSend ? "text-accent" : "text-muted-foreground"}`}
+                className={`h-3.5 w-3.5 shrink-0 ${
+                  c.willSend ? "text-teal-400" : "text-slate-500"
+                }`}
               />
               <div className="min-w-0">
-                <p className="text-xs font-medium">{CHANNEL_LABELS[c.channel]}</p>
-                <p className="text-[11px] text-muted-foreground">{c.reason}</p>
+                <span className="text-xs font-medium text-slate-300">
+                  {CHANNEL_LABELS[c.channel]}
+                </span>
+                <span className="ml-2 truncate text-[11px] text-slate-400">
+                  • {c.reason}
+                </span>
               </div>
             </div>
             <Badge
-              variant={c.willSend ? (c.deferred ? "secondary" : "default") : "outline"}
-              className="shrink-0 text-[10px]"
+              variant="outline"
+              className={`shrink-0 border text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${
+                c.deferred
+                  ? "border-amber-400/30 bg-amber-400/10 text-amber-300"
+                  : c.willSend
+                  ? "border-teal-400/30 bg-teal-500/10 text-teal-300"
+                  : "border-white/10 bg-white/5 text-slate-400"
+              }`}
             >
               {c.deferred ? (
-                <>
-                  <Clock className="mr-1 h-3 w-3" />
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3 w-3 text-amber-400" />
                   Digest
-                </>
+                </span>
               ) : c.willSend ? (
                 "Send"
               ) : (
@@ -111,7 +126,7 @@ const OUTCOMES: { value: Outcome; label: string; icon: typeof ThumbsUp }[] = [
 function simulatedEvents(
   outcome: Outcome,
   stage: JobStage,
-  nextStage: JobStage | null,
+  nextStage: JobStage | null
 ): { kind: Kind; stage: JobStage; title: string; detail: string; assignedShift: boolean }[] {
   const label = STAGE_LABELS[stage];
   if (outcome === "approved") {
@@ -256,7 +271,7 @@ export default function NotificationTestPanel() {
         return { kind, willFire, reason, channels: deliveryPlan(kind, ctx, prefs) };
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [prefs, stage, assignedToMe, canOverdue],
+    [prefs, stage, assignedToMe, canOverdue]
   );
 
   const sendTest = (kind: Kind) => {
@@ -267,134 +282,192 @@ export default function NotificationTestPanel() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <FlaskConical className="h-5 w-5 text-accent" />
-          Test notifications
+    <Card className="relative w-full min-w-0 overflow-hidden border-white/[0.08] bg-[#05131a]/80 text-white shadow-xl backdrop-blur-md">
+      <CardHeader className="border-b border-white/[0.06] p-4 sm:p-6">
+        <CardTitle className="flex items-center gap-2.5 text-base font-bold tracking-tight text-white sm:text-lg">
+          <motion.div
+            whileHover={{ rotate: 15, scale: 1.1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 15 }}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-teal-400/20 bg-teal-500/10 text-teal-400"
+          >
+            <FlaskConical className="h-4 w-4" />
+          </motion.div>
+          <span className="break-words">Test Notifications</span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4 text-sm">
-        <p className="text-xs text-muted-foreground">
+
+      <CardContent className="space-y-5 p-4 text-xs sm:p-6 sm:text-sm">
+        <p className="break-words text-xs text-slate-400">
           Preview exactly which alerts you would receive for a given SOP step and assignment.
         </p>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1">
-            <Label className="text-xs">SOP step</Label>
+        {/* CONTROLS GRID */}
+        <div className="grid gap-3 sm:grid-cols-2 min-w-0">
+          <div className="space-y-1.5 min-w-0">
+            <Label className="text-xs font-semibold text-slate-300">SOP step</Label>
             <Select value={stage} onValueChange={(v) => setStage(v as JobStage)}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full border-white/[0.1] bg-[#030d12]/80 text-xs text-white focus:border-teal-400/50">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="max-h-72">
+              <SelectContent className="max-h-72 border-white/10 bg-[#05131a] text-white">
                 {ALL_STAGES.map((s) => (
-                  <SelectItem key={s} value={s}>
+                  <SelectItem
+                    key={s}
+                    value={s}
+                    className="text-xs focus:bg-teal-500/20 focus:text-teal-200"
+                  >
                     {STAGE_LABELS[s]}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          <div className="flex items-end justify-between gap-3 rounded border p-3">
-            <div>
-              <p className="font-medium">Assigned to me</p>
-              <p className="text-xs text-muted-foreground">Simulate step ownership.</p>
+
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-[#02080b]/60 p-3 min-w-0">
+            <div className="min-w-0">
+              <p className="font-semibold text-slate-200">Assigned to me</p>
+              <p className="break-words text-[11px] text-slate-400">Simulate step ownership.</p>
             </div>
-            <Switch checked={assignedToMe} onCheckedChange={setAssignedToMe} />
+            <Switch
+              checked={assignedToMe}
+              onCheckedChange={setAssignedToMe}
+              className="data-[state=checked]:bg-teal-500 shrink-0"
+            />
           </div>
         </div>
 
-        <div className="space-y-2">
+        {/* RESULTS PER ALERT KIND */}
+        <div className="space-y-3 min-w-0">
           {results.map((r) => (
             <div
               key={r.kind}
-              className="flex items-start justify-between gap-3 rounded border p-3"
+              className="flex flex-col gap-3 rounded-xl border border-white/[0.08] bg-[#02080b]/60 p-3.5 sm:flex-row sm:items-start sm:justify-between min-w-0"
             >
-              <div className="flex min-w-0 flex-1 items-start gap-2">
+              <div className="flex min-w-0 flex-1 items-start gap-2.5">
                 {r.willFire ? (
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-teal-400" />
                 ) : (
-                  <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium">{KIND_LABELS[r.kind]}</p>
-                  <p className="text-xs text-muted-foreground">{r.reason}</p>
+                  <p className="font-semibold text-slate-200">{KIND_LABELS[r.kind]}</p>
+                  <p className="break-words text-[11px] text-slate-400">{r.reason}</p>
                   <ChannelMatrix plan={r.channels} />
                 </div>
               </div>
-              <div className="flex shrink-0 flex-col items-end gap-2">
-                <Badge variant={r.willFire ? "default" : "outline"} className="text-[10px]">
+
+              <div className="flex items-center justify-between gap-2 shrink-0 sm:flex-col sm:items-end sm:justify-start">
+                <Badge
+                  variant="outline"
+                  className={`border text-[10px] font-bold tracking-wide uppercase px-2 py-0.5 rounded-full ${
+                    r.willFire
+                      ? "border-teal-400/30 bg-teal-500/10 text-teal-300"
+                      : "border-white/10 bg-white/5 text-slate-400"
+                  }`}
+                >
                   {r.willFire ? "Will alert" : "Silenced"}
                 </Badge>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={() => sendTest(r.kind)}
-                >
-                  Send test
-                </Button>
+                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 border-white/10 bg-white/5 text-xs text-slate-300 hover:bg-teal-500/10 hover:text-teal-300 hover:border-teal-400/30"
+                    onClick={() => sendTest(r.kind)}
+                  >
+                    <Send className="mr-1 h-3 w-3" />
+                    Send test
+                  </Button>
+                </motion.div>
               </div>
             </div>
           ))}
         </div>
 
-        <div className="space-y-3 rounded border p-3">
-          <div className="space-y-1">
-            <p className="font-medium">Approval action simulation</p>
-            <p className="text-xs text-muted-foreground">
+        {/* APPROVAL SIMULATION SECTION */}
+        <div className="space-y-4 rounded-xl border border-white/[0.08] bg-[#02080b]/60 p-3.5 sm:p-4 min-w-0">
+          <div className="space-y-1 min-w-0">
+            <p className="font-semibold text-slate-200">Approval action simulation</p>
+            <p className="break-words text-[11px] text-slate-400">
               Preview the alerts triggered when this step is completed with a given outcome.
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 min-w-0">
             {OUTCOMES.map((o) => {
               const Icon = o.icon;
+              const isSelected = outcome === o.value;
               return (
-                <Button
+                <motion.div
                   key={o.value}
-                  type="button"
-                  size="sm"
-                  variant={outcome === o.value ? "default" : "outline"}
-                  className="h-8 text-xs"
-                  onClick={() => setOutcome(o.value)}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <Icon className="mr-1 h-3.5 w-3.5" />
-                  {o.label}
-                </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className={`h-8 text-xs font-medium transition-colors ${
+                      isSelected
+                        ? "border-teal-400/40 bg-teal-500/20 text-teal-200 hover:bg-teal-500/30"
+                        : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
+                    }`}
+                    onClick={() => setOutcome(o.value)}
+                  >
+                    <Icon className={`mr-1.5 h-3.5 w-3.5 ${isSelected ? "text-teal-400" : "text-slate-400"}`} />
+                    {o.label}
+                  </Button>
+                </motion.div>
               );
             })}
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2.5 min-w-0">
             {outcomeResults.map((r, i) => (
-              <div key={`${r.kind}-${i}`} className="flex items-start justify-between gap-3 rounded border p-2.5">
-                <div className="flex min-w-0 flex-1 items-start gap-2">
+              <div
+                key={`${r.kind}-${i}`}
+                className="flex items-start justify-between gap-3 rounded-lg border border-white/[0.06] bg-[#030d12]/50 p-3 min-w-0"
+              >
+                <div className="flex min-w-0 flex-1 items-start gap-2.5">
                   {r.willFire ? (
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-teal-400" />
                   ) : (
-                    <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                    <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium">{r.title}</p>
-                    <p className="text-xs text-muted-foreground">{r.detail}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {KIND_LABELS[r.kind]} · {r.reason}
+                    <p className="font-medium text-slate-200">{r.title}</p>
+                    <p className="break-words text-xs text-slate-400">{r.detail}</p>
+                    <p className="break-words text-[11px] text-slate-400 mt-0.5">
+                      {KIND_LABELS[r.kind]} • {r.reason}
                     </p>
                     <ChannelMatrix plan={r.channels} />
                   </div>
                 </div>
-                <Badge variant={r.willFire ? "default" : "outline"} className="shrink-0 text-[10px]">
+                <Badge
+                  variant="outline"
+                  className={`shrink-0 border text-[10px] font-bold tracking-wide uppercase px-2 py-0.5 rounded-full ${
+                    r.willFire
+                      ? "border-teal-400/30 bg-teal-500/10 text-teal-300"
+                      : "border-white/10 bg-white/5 text-slate-400"
+                  }`}
+                >
                   {r.willFire ? "Will alert" : "Silenced"}
                 </Badge>
               </div>
             ))}
           </div>
 
-          <Button type="button" size="sm" className="h-8 text-xs" onClick={sendOutcomeTests}>
-            Simulate {OUTCOMES.find((o) => o.value === outcome)?.label.toLowerCase()}
-          </Button>
+          <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
+            <Button
+              type="button"
+              size="sm"
+              className="w-full sm:w-auto h-8 bg-teal-500 text-xs font-semibold text-slate-950 hover:bg-teal-400"
+              onClick={sendOutcomeTests}
+            >
+              <PlayCircle className="mr-1.5 h-3.5 w-3.5" />
+              Simulate {OUTCOMES.find((o) => o.value === outcome)?.label.toLowerCase()}
+            </Button>
+          </motion.div>
         </div>
       </CardContent>
     </Card>

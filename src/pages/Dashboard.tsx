@@ -15,6 +15,7 @@ import {
   ChevronRight,
   CircleDollarSign,
   Clock3,
+  Cpu,
   Gauge,
   Layers3,
   Loader2,
@@ -141,7 +142,7 @@ function AnimatedNumber({
 }
 
 /* -------------------------------------------------------
-   FUTURISTIC CARD
+   FUTURISTIC HUD / GLASS CARD
 ------------------------------------------------------- */
 
 function GlassCard({
@@ -160,26 +161,37 @@ function GlassCard({
   return (
     <div
       className={`
-        relative overflow-hidden rounded-[14px]
-        border border-white/[0.085]
-        bg-[#10151d]/95
-        shadow-[0_18px_60px_rgba(0,0,0,0.24)]
+        group relative overflow-hidden rounded-xl
+        border border-cyan-500/20 bg-[#090d16]/90
+        backdrop-blur-md transition-all duration-300
+        hover:border-cyan-400/40 hover:shadow-[0_0_25px_rgba(34,211,238,0.12)]
         ${className}
       `}
     >
-      <div className="pointer-events-none absolute -right-20 -top-20 h-40 w-40 rounded-full bg-cyan-500/[0.035] blur-3xl" />
+      {/* Sci-Fi Corner Brackets */}
+      <div className="pointer-events-none absolute left-0 top-0 h-2 w-2 border-l-2 border-t-2 border-cyan-400/60" />
+      <div className="pointer-events-none absolute right-0 top-0 h-2 w-2 border-r-2 border-t-2 border-cyan-400/60" />
+      <div className="pointer-events-none absolute bottom-0 left-0 h-2 w-2 border-b-2 border-l-2 border-cyan-400/60" />
+      <div className="pointer-events-none absolute bottom-0 right-0 h-2 w-2 border-b-2 border-r-2 border-cyan-400/60" />
+
+      {/* Holographic Scan Line */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-cyan-400/[0.02] to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 animate-[scan_6s_linear_infinite]" />
+
+      {/* Radial Backlight Ambient Glow */}
+      <div className="pointer-events-none absolute -right-16 -top-16 h-36 w-36 rounded-full bg-cyan-500/[0.05] blur-3xl" />
 
       {(title || subtitle || action) && (
-        <div className="relative flex items-center justify-between border-b border-white/[0.065] px-6 py-4">
+        <div className="relative flex items-center justify-between border-b border-cyan-500/10 px-6 py-3.5 bg-cyan-950/20">
           <div>
             {title && (
-              <h3 className="text-[11px] font-semibold tracking-wide text-slate-100 sm:text-xs">
+              <h3 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-cyan-300 sm:text-xs">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
                 {title}
               </h3>
             )}
 
             {subtitle && (
-              <p className="mt-0.5 text-[10px] text-slate-400">
+              <p className="mt-0.5 text-[10px] font-mono text-slate-400">
                 {subtitle}
               </p>
             )}
@@ -220,21 +232,22 @@ function MetricCard({
   sublabel?: string;
 }) {
   return (
-    <div className="group relative overflow-hidden rounded-[13px] border border-white/[0.085] bg-[#10151d] px-5 py-4.5 transition-all duration-300 hover:-translate-y-[2px] hover:border-cyan-400/20 hover:shadow-[0_12px_35px_rgba(0,0,0,0.25)]">
+    <div className="group relative overflow-hidden rounded-xl border border-cyan-500/20 bg-[#090d16] px-5 py-4 transition-all duration-300 hover:-translate-y-1 hover:border-cyan-400/50 hover:shadow-[0_0_20px_rgba(34,211,238,0.15)]">
+      {/* Sci-Fi Ambient Glow */}
       <div
-        className={`absolute -right-8 -top-8 h-24 w-24 rounded-full blur-2xl ${color}`}
+        className={`absolute -right-8 -top-8 h-24 w-24 rounded-full blur-2xl opacity-50 ${color}`}
       />
 
       <div className="relative flex items-start justify-between">
         <div>
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400">
               {label}
             </span>
 
             {delta !== undefined && delta !== null && (
               <span
-                className={`flex items-center gap-0.5 text-[10px] font-bold ${
+                className={`flex items-center gap-0.5 text-[10px] font-bold font-mono ${
                   delta >= 0 ? "text-emerald-400" : "text-rose-400"
                 }`}
               >
@@ -248,7 +261,7 @@ function MetricCard({
             )}
           </div>
 
-          <div className="mt-2 text-xl font-bold tracking-tight text-white sm:text-2xl">
+          <div className="mt-2 text-xl font-bold font-mono tracking-tight text-cyan-50 sm:text-2xl drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">
             <AnimatedNumber
               value={value}
               prefix={prefix}
@@ -258,19 +271,19 @@ function MetricCard({
           </div>
 
           {sublabel && (
-            <div className="mt-1 text-[10px] text-slate-400">
+            <div className="mt-1 text-[10px] font-mono text-slate-500">
               {sublabel}
             </div>
           )}
         </div>
 
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.035] p-2">
-          <Icon className="h-3.5 w-3.5 text-cyan-300" />
+        <div className="rounded-lg border border-cyan-500/20 bg-cyan-950/30 p-2 shadow-[0_0_10px_rgba(34,211,238,0.1)] group-hover:border-cyan-400/40">
+          <Icon className="h-4 w-4 text-cyan-400 animate-pulse" />
         </div>
       </div>
 
-      <div className="relative mt-3 h-[3px] overflow-hidden rounded-full bg-white/[0.05]">
-        <div className="h-full w-[68%] rounded-full bg-gradient-to-r from-cyan-500/30 via-cyan-400/80 to-transparent" />
+      <div className="relative mt-3 h-[2px] overflow-hidden rounded-full bg-slate-800">
+        <div className="h-full w-[70%] rounded-full bg-gradient-to-r from-cyan-500 via-teal-400 to-transparent shadow-[0_0_8px_rgba(34,211,238,0.8)] animate-[pulseGlow_2s_infinite]" />
       </div>
     </div>
   );
@@ -299,12 +312,12 @@ function Speedometer({
         <defs>
           <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#2563eb" />
-            <stop offset="55%" stopColor="#06b6d4" />
+            <stop offset="50%" stopColor="#06b6d4" />
             <stop offset="100%" stopColor="#22d3ee" />
           </linearGradient>
 
           <filter id="gaugeGlow">
-            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feGaussianBlur stdDeviation="4" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
               <feMergeNode in="SourceGraphic" />
@@ -312,6 +325,7 @@ function Speedometer({
           </filter>
         </defs>
 
+        {/* Gauge Background Track */}
         <circle
           cx="90"
           cy="90"
@@ -325,6 +339,7 @@ function Speedometer({
           strokeLinecap="round"
         />
 
+        {/* Dynamic Progress Arc */}
         <circle
           cx="90"
           cy="90"
@@ -342,6 +357,7 @@ function Speedometer({
           }}
         />
 
+        {/* Radial Ticks */}
         {Array.from({ length: 11 }).map((_, i) => {
           const tickAngle = -135 + i * 27;
           const rad = (tickAngle * Math.PI) / 180;
@@ -357,12 +373,13 @@ function Speedometer({
               y1={y1}
               x2={x2}
               y2={y2}
-              stroke="rgba(255,255,255,0.25)"
+              stroke="rgba(34,211,238,0.3)"
               strokeWidth={i % 5 === 0 ? 2 : 1}
             />
           );
         })}
 
+        {/* Indicator Needle */}
         <g
           style={{
             transformOrigin: "90px 90px",
@@ -377,6 +394,7 @@ function Speedometer({
             y2="38"
             stroke="#67e8f9"
             strokeWidth="2.5"
+            strokeLinecap="round"
             filter="url(#gaugeGlow)"
           />
 
@@ -384,24 +402,24 @@ function Speedometer({
             cx="90"
             cy="90"
             r="5"
-            fill="#0b1118"
+            fill="#090d16"
             stroke="#67e8f9"
             strokeWidth="2"
           />
         </g>
       </svg>
 
-      <div className="absolute left-0 right-0 top-[72px] text-center">
-        <div className="text-2xl font-bold tracking-tight text-white">
+      <div className="absolute left-0 right-0 top-[70px] text-center pointer-events-none">
+        <div className="text-2xl font-bold font-mono tracking-tight text-cyan-300 drop-shadow-[0_0_12px_rgba(34,211,238,0.5)]">
           <AnimatedNumber value={safe} suffix="%" />
         </div>
 
-        <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-cyan-400">
+        <div className="mt-0.5 text-[9px] font-mono font-semibold uppercase tracking-widest text-cyan-400/80">
           {label}
         </div>
       </div>
 
-      <div className="absolute bottom-1 left-1/2 flex -translate-x-1/2 gap-9 text-[10px] font-medium text-slate-500">
+      <div className="absolute bottom-1 left-1/2 flex -translate-x-1/2 gap-9 text-[10px] font-mono text-slate-500">
         <span>0</span>
         <span>50</span>
         <span>100</span>
@@ -452,12 +470,12 @@ function RevenueChart({ values }: { values: number[] }) {
       >
         <defs>
           <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.25" />
+            <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.3" />
             <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
           </linearGradient>
 
           <filter id="lineGlow">
-            <feGaussianBlur stdDeviation="2.5" result="blur" />
+            <feGaussianBlur stdDeviation="3" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
               <feMergeNode in="SourceGraphic" />
@@ -474,7 +492,8 @@ function RevenueChart({ values }: { values: number[] }) {
               y1={y}
               x2={width - paddingX}
               y2={y}
-              stroke="rgba(255,255,255,0.06)"
+              stroke="rgba(34,211,238,0.08)"
+              strokeDasharray="4 4"
               strokeWidth="1"
             />
           );
@@ -495,15 +514,24 @@ function RevenueChart({ values }: { values: number[] }) {
         />
 
         {points.map((p, i) => (
-          <circle
-            key={i}
-            cx={p.x}
-            cy={p.y}
-            r="3.5"
-            fill="#0b1118"
-            stroke="#67e8f9"
-            strokeWidth="1.5"
-          />
+          <g key={i} className="group/node">
+            <circle
+              cx={p.x}
+              cy={p.y}
+              r="4"
+              fill="#090d16"
+              stroke="#67e8f9"
+              strokeWidth="2"
+              className="transition-transform duration-300 group-hover/node:scale-150"
+            />
+            <circle
+              cx={p.x}
+              cy={p.y}
+              r="7"
+              fill="rgba(34,211,238,0.2)"
+              className="animate-ping opacity-75"
+            />
+          </g>
         ))}
 
         {MONTHS.map((month, i) => {
@@ -514,8 +542,9 @@ function RevenueChart({ values }: { values: number[] }) {
               x={x}
               y={height - 2}
               textAnchor="middle"
-              fill="#94a3b8"
+              fill="#64748b"
               fontSize="9"
+              fontFamily="monospace"
               fontWeight="500"
             >
               {month}
@@ -542,22 +571,22 @@ function ConversionChart({ values }: { values: number[] }) {
         return (
           <div
             key={index}
-            className="flex h-full flex-1 flex-col items-center justify-end gap-1.5"
+            className="group/bar flex h-full flex-1 flex-col items-center justify-end gap-1.5"
           >
             <div className="relative flex w-full justify-center">
               <div
-                className="w-[75%] rounded-t-sm bg-gradient-to-t from-blue-700 via-cyan-500 to-cyan-300 opacity-90 shadow-[0_0_14px_rgba(34,211,238,0.16)] transition-all duration-700"
+                className="w-[75%] rounded-t-sm bg-gradient-to-t from-blue-600 via-cyan-500 to-cyan-300 opacity-80 shadow-[0_0_12px_rgba(34,211,238,0.3)] transition-all duration-500 group-hover/bar:opacity-100 group-hover/bar:shadow-[0_0_20px_rgba(34,211,238,0.7)]"
                 style={{
                   height: `${height}px`,
                   animationDelay: `${index * 80}ms`,
                 }}
               />
-              <span className="absolute -top-4 text-[10px] font-semibold text-slate-300">
+              <span className="absolute -top-5 font-mono text-[10px] font-semibold text-cyan-300 opacity-0 transition-opacity group-hover/bar:opacity-100">
                 {value}
               </span>
             </div>
 
-            <span className="text-[10px] text-slate-400">{index + 1}</span>
+            <span className="font-mono text-[10px] text-slate-500">{index + 1}</span>
           </div>
         );
       })}
@@ -583,17 +612,17 @@ function PipelineMini({
   const percentage = total > 0 ? Math.min(100, (value / total) * 100) : 0;
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3.5">
+    <div className="rounded-lg border border-cyan-500/15 bg-cyan-950/10 px-4 py-3">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-medium text-slate-400">{label}</span>
-        <span className="text-[11px] font-bold text-slate-200">
+        <span className="font-mono text-[11px] font-medium text-slate-300">{label}</span>
+        <span className="font-mono text-[11px] font-bold text-cyan-400">
           {value}
         </span>
       </div>
 
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-800/80">
         <div
-          className={`h-full rounded-full ${color}`}
+          className={`h-full rounded-full ${color} shadow-[0_0_10px_currentColor]`}
           style={{
             width: `${percentage}%`,
             transition: "width 1.2s cubic-bezier(.16,1,.3,1)",
@@ -610,37 +639,37 @@ function PipelineMini({
 
 function ActivityFeed({ rows }: { rows: ActivityRow[] }) {
   return (
-    <div className="divide-y divide-white/[0.05]">
+    <div className="divide-y divide-cyan-500/10">
       {rows.length === 0 ? (
-        <div className="px-6 py-10 text-center text-[11px] text-slate-500">
+        <div className="px-6 py-10 font-mono text-center text-[11px] text-slate-500">
           No recent system activity.
         </div>
       ) : (
         rows.slice(0, 5).map((row, index) => (
-          <div key={row.id} className="flex items-center gap-3 px-6 py-3.5">
+          <div key={row.id} className="group/item flex items-center gap-3 px-6 py-3 transition hover:bg-cyan-500/[0.03]">
             <div className="relative">
-              <div className="flex h-6.5 w-6.5 items-center justify-center rounded-full border border-cyan-400/20 bg-cyan-400/[0.06]">
+              <div className="flex h-6.5 w-6.5 items-center justify-center rounded-full border border-cyan-400/30 bg-cyan-950/40 shadow-[0_0_8px_rgba(34,211,238,0.2)]">
                 {index === 0 ? (
-                  <Zap className="h-3 w-3 text-cyan-400" />
+                  <Zap className="h-3 w-3 text-cyan-300 animate-pulse" />
                 ) : (
                   <Activity className="h-3 w-3 text-slate-400" />
                 )}
               </div>
 
               {index < rows.length - 1 && (
-                <div className="absolute left-1/2 top-7 h-4 w-px -translate-x-1/2 bg-white/[0.06]" />
+                <div className="absolute left-1/2 top-7 h-4 w-px -translate-x-1/2 bg-cyan-500/20" />
               )}
             </div>
 
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[11px] font-medium text-slate-200">{row.action}</p>
+              <p className="truncate font-mono text-[11px] font-medium text-slate-200 group-hover/item:text-cyan-300 transition-colors">{row.action}</p>
 
-              <p className="mt-0.5 text-[10px] text-slate-400">
+              <p className="mt-0.5 font-mono text-[10px] text-slate-500">
                 {new Date(row.created_at).toLocaleString()}
               </p>
             </div>
 
-            <ChevronRight className="h-3.5 w-3.5 text-slate-600" />
+            <ChevronRight className="h-3.5 w-3.5 text-slate-600 group-hover/item:text-cyan-400 group-hover/item:translate-x-0.5 transition-all" />
           </div>
         ))
       )}
@@ -666,19 +695,19 @@ function WorkloadBars({
   const total = active + approval + approved + locked;
 
   const items = [
-    { label: "Active", value: active, color: "bg-cyan-400" },
-    { label: "Approval", value: approval, color: "bg-violet-400" },
-    { label: "Approved", value: approved, color: "bg-emerald-400" },
-    { label: "Locked", value: locked, color: "bg-slate-500" },
+    { label: "Active", value: active, color: "bg-cyan-400 shadow-cyan-400/50" },
+    { label: "Approval", value: approval, color: "bg-violet-400 shadow-violet-400/50" },
+    { label: "Approved", value: approved, color: "bg-emerald-400 shadow-emerald-400/50" },
+    { label: "Locked", value: locked, color: "bg-slate-500 shadow-slate-500/50" },
   ];
 
   return (
     <div className="px-6 py-5">
-      <div className="flex h-2.5 overflow-hidden rounded-full bg-white/[0.06]">
+      <div className="flex h-2.5 overflow-hidden rounded-full bg-slate-800">
         {items.map((item) => (
           <div
             key={item.label}
-            className={`${item.color} transition-all duration-1000`}
+            className={`${item.color} shadow-[0_0_8px] transition-all duration-1000`}
             style={{
               width: total > 0 ? `${(item.value / total) * 100}%` : "0%",
             }}
@@ -691,10 +720,10 @@ function WorkloadBars({
           <div key={item.label} className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <span className={`h-1.5 w-1.5 rounded-full ${item.color}`} />
-              <span className="text-[11px] text-slate-400">{item.label}</span>
+              <span className="font-mono text-[11px] text-slate-400">{item.label}</span>
             </div>
 
-            <span className="text-[11px] font-bold text-slate-200">
+            <span className="font-mono text-[11px] font-bold text-slate-200">
               {item.value}
             </span>
           </div>
@@ -913,11 +942,11 @@ export default function Dashboard() {
     );
 
     const pipelineStages = [
-      { label: "Intake", value: jobs.length, color: "bg-cyan-400" },
-      { label: "Active", value: activeJobs.length, color: "bg-blue-400" },
-      { label: "Halfway", value: halfway, color: "bg-violet-400" },
-      { label: "Near Complete", value: nearCompletion, color: "bg-emerald-400" },
-      { label: "Completed", value: completedJobs.length, color: "bg-slate-500" },
+      { label: "Intake", value: jobs.length, color: "bg-cyan-400 shadow-cyan-400" },
+      { label: "Active", value: activeJobs.length, color: "bg-blue-400 shadow-blue-400" },
+      { label: "Halfway", value: halfway, color: "bg-violet-400 shadow-violet-400" },
+      { label: "Near Complete", value: nearCompletion, color: "bg-emerald-400 shadow-emerald-400" },
+      { label: "Completed", value: completedJobs.length, color: "bg-slate-500 shadow-slate-500" },
     ];
 
     const workload = {
@@ -954,17 +983,17 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen w-full items-center justify-center">
+      <div className="flex min-h-screen w-full items-center justify-center bg-[#050811]">
         <div className="text-center">
-          <div className="relative mx-auto flex h-10 w-10 items-center justify-center">
-            <div className="absolute inset-0 animate-ping rounded-full bg-cyan-400/10" />
-            <div className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-400/[0.04]">
-              <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
+          <div className="relative mx-auto flex h-12 w-12 items-center justify-center">
+            <div className="absolute inset-0 animate-ping rounded-full bg-cyan-400/20" />
+            <div className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-400/40 bg-cyan-950/40 shadow-[0_0_20px_rgba(34,211,238,0.4)]">
+              <Loader2 className="h-5 w-5 animate-spin text-cyan-300" />
             </div>
           </div>
 
-          <div className="mt-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-            Initializing RST Command Center
+          <div className="mt-4 font-mono text-[11px] font-semibold tracking-widest text-cyan-400 uppercase">
+            Initializing RST Command Center...
           </div>
         </div>
       </div>
@@ -972,7 +1001,10 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen w-full px-0 py-4 md:py-6 text-slate-200">
+    <div className="relative min-h-screen w-full bg-[#050811] px-4 py-4 md:py-6 text-slate-200">
+      {/* Sci-Fi Grid Background Pattern */}
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#1f293715_1px,transparent_1px),linear-gradient(to_bottom,#1f293715_1px,transparent_1px)] bg-[size:32px_32px]" />
+
       <style>{`
         @keyframes drawLine {
           to {
@@ -981,11 +1013,11 @@ export default function Dashboard() {
         }
 
         @keyframes pulseGlow {
-          0%,100% {
-            opacity: .35;
+          0%, 100% {
+            opacity: 0.4;
           }
           50% {
-            opacity: .8;
+            opacity: 0.9;
           }
         }
 
@@ -994,40 +1026,49 @@ export default function Dashboard() {
             transform: translateY(-100%);
           }
           100% {
-            transform: translateY(500%);
+            transform: translateY(1000%);
           }
         }
       `}</style>
 
       {/* HEADER CONTROL BAR */}
-      <div className="mb-5 flex flex-wrap items-center justify-end gap-2 border-b border-white/[0.065] pb-3.5">
-        <button
-          onClick={() => fetchData(true)}
-          className="flex h-7.5 w-7.5 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03] text-slate-400 transition hover:border-cyan-400/20 hover:text-cyan-300"
-        >
-          <RefreshCw
-            className={`h-3 w-3 ${refreshing ? "animate-spin" : ""}`}
-          />
-        </button>
+      <div className="relative mb-5 flex flex-wrap items-center justify-between border-b border-cyan-500/20 pb-3.5">
+        <div className="flex items-center gap-2">
+          <Cpu className="h-5 w-5 text-cyan-400 animate-pulse" />
+          <h1 className="font-mono text-sm font-bold tracking-widest text-cyan-300 uppercase">
+            System Operations Command
+          </h1>
+        </div>
 
-        {isSuperAdmin && (
-          <Button
-            onClick={() => navigate("/jobs/new")}
-            className="h-7.5 rounded-lg bg-cyan-500 px-3 text-[11px] font-bold text-slate-950 shadow-[0_0_20px_rgba(34,211,238,.12)] hover:bg-cyan-400"
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => fetchData(true)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-500/30 bg-cyan-950/30 text-cyan-400 transition hover:border-cyan-400 hover:bg-cyan-900/40 hover:shadow-[0_0_15px_rgba(34,211,238,0.3)]"
           >
-            <Plus className="mr-1 h-3 w-3" />
-            New Work
-          </Button>
-        )}
+            <RefreshCw
+              className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`}
+            />
+          </button>
+
+          {isSuperAdmin && (
+            <Button
+              onClick={() => navigate("/jobs/new")}
+              className="h-8 rounded-lg border border-cyan-400/50 bg-cyan-500 px-3.5 font-mono text-[11px] font-bold text-slate-950 shadow-[0_0_20px_rgba(34,211,238,0.3)] hover:bg-cyan-300"
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              New Work
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* TOP KPI ROW */}
-      <div className="mb-5 grid grid-cols-2 gap-3.5 lg:grid-cols-5">
+      <div className="relative mb-5 grid grid-cols-2 gap-3.5 lg:grid-cols-5">
         <MetricCard
           label="Incoming Work"
           value={jobs.length}
           icon={BriefcaseBusiness}
-          color="bg-cyan-400/[0.06]"
+          color="bg-cyan-500"
           sublabel="Total tracked work items"
         />
 
@@ -1035,7 +1076,7 @@ export default function Dashboard() {
           label="Active Work"
           value={model.activeJobs.length}
           icon={Workflow}
-          color="bg-blue-400/[0.06]"
+          color="bg-blue-500"
           sublabel="Currently executing"
         />
 
@@ -1045,7 +1086,7 @@ export default function Dashboard() {
           prefix={CUR}
           decimals={2}
           icon={CircleDollarSign}
-          color="bg-violet-400/[0.06]"
+          color="bg-violet-500"
           delta={model.revenueDelta}
           sublabel="Current month"
         />
@@ -1054,7 +1095,7 @@ export default function Dashboard() {
           label="Open Opportunities"
           value={model.opportunities}
           icon={Target}
-          color="bg-emerald-400/[0.06]"
+          color="bg-emerald-500"
           sublabel="Below 50% completion"
         />
 
@@ -1063,25 +1104,26 @@ export default function Dashboard() {
           value={model.compliance}
           suffix="%"
           icon={Gauge}
-          color="bg-cyan-400/[0.06]"
+          color="bg-cyan-400"
           sublabel="Operational compliance"
         />
       </div>
 
       {/* MAIN ANALYTICS ROW */}
-      <div className="grid gap-4 xl:grid-cols-[1.15fr_1.15fr_0.75fr]">
+      <div className="relative grid gap-4 xl:grid-cols-[1.15fr_1.15fr_0.75fr]">
         <GlassCard
           title="Revenue Intelligence"
           subtitle="Financial performance trajectory"
           action={
-            <span className="rounded-md border border-cyan-400/20 bg-cyan-400/[0.06] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-cyan-400">
+            <span className="flex items-center gap-1 rounded-md border border-cyan-400/40 bg-cyan-950/60 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-cyan-300 shadow-[0_0_10px_rgba(34,211,238,0.2)]">
+              <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-ping" />
               Live
             </span>
           }
         >
           <div className="flex items-end justify-between px-6 pt-5">
             <div>
-              <div className="text-xl font-bold tracking-tight text-white sm:text-2xl">
+              <div className="font-mono text-xl font-bold tracking-tight text-white sm:text-2xl drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">
                 <AnimatedNumber
                   value={model.thisMonth}
                   prefix={CUR}
@@ -1089,9 +1131,9 @@ export default function Dashboard() {
                 />
               </div>
 
-              <div className="mt-1 flex items-center gap-1">
-                <TrendingUp className="h-3 w-3 text-emerald-400" />
-                <span className="text-[11px] font-medium text-emerald-400">
+              <div className="mt-1 flex items-center gap-1 font-mono text-[11px] text-emerald-400">
+                <TrendingUp className="h-3 w-3" />
+                <span>
                   {model.revenueDelta !== null
                     ? `${model.revenueDelta.toFixed(1)}% vs previous month`
                     : "Tracking current month"}
@@ -1100,10 +1142,10 @@ export default function Dashboard() {
             </div>
 
             <div className="text-right">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              <div className="font-mono text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                 Pipeline
               </div>
-              <div className="mt-0.5 text-xs font-bold text-slate-200">
+              <div className="mt-0.5 font-mono text-xs font-bold text-cyan-300">
                 {shortMoney(model.pipelineValue)}
               </div>
             </div>
@@ -1114,119 +1156,88 @@ export default function Dashboard() {
 
         <GlassCard
           title="Conversion Metrics"
-          subtitle="Operational movement across the system"
+          subtitle="Operational movement across system"
           action={
-            <span className="text-[10px] font-medium text-slate-400">8 periods</span>
+            <span className="font-mono text-[10px] text-slate-400">8 periods</span>
           }
         >
           <div className="flex items-center justify-between px-6 pt-5">
             <div>
-              <div className="text-xl font-bold text-white">
+              <div className="font-mono text-xl font-bold text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">
                 <AnimatedNumber value={model.nearCompletion} />
               </div>
-              <div className="mt-0.5 text-[11px] text-slate-400">
+              <div className="mt-0.5 font-mono text-[11px] text-slate-400">
                 Near completion
               </div>
             </div>
 
-            <div className="rounded-xl border border-violet-400/20 bg-violet-400/[0.06] p-2">
-              <TrendingUp className="h-3.5 w-3.5 text-violet-300" />
+            <div className="rounded-lg border border-violet-500/30 bg-violet-950/40 p-2 shadow-[0_0_12px_rgba(139,92,246,0.2)]">
+              <TrendingUp className="h-4 w-4 text-violet-300" />
             </div>
           </div>
 
           <ConversionChart values={model.conversionSeries} />
         </GlassCard>
 
-        <GlassCard title="SLA Performance" subtitle="Operational velocity">
-          <Speedometer value={model.compliance} label="System On Track" />
+        <GlassCard
+          title="System Health"
+          subtitle="SLA compliance and velocity"
+          action={
+            <span className="flex items-center gap-1.5 font-mono text-[10px] text-slate-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399] animate-pulse" />
+              Active
+            </span>
+          }
+        >
+          <Speedometer value={model.compliance} label="SLA Score" />
 
-          <div className="grid grid-cols-3 border-t border-white/[0.065]">
-            <div className="px-4 py-3.5 text-center">
-              <div className="text-sm font-bold text-emerald-400">
-                <AnimatedNumber value={model.onTime} />
-              </div>
-              <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                On Time
+          <div className="border-t border-cyan-500/10 px-6 py-4 grid grid-cols-3 gap-2 text-center">
+            <div>
+              <div className="font-mono text-[9px] uppercase text-slate-400">On Time</div>
+              <div className="mt-1 font-mono text-sm font-bold text-emerald-400">
+                {model.onTime}
               </div>
             </div>
-
-            <div className="border-x border-white/[0.065] px-4 py-3.5 text-center">
-              <div className="text-sm font-bold text-amber-400">
-                <AnimatedNumber value={model.atRisk} />
-              </div>
-              <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                At Risk
+            <div>
+              <div className="font-mono text-[9px] uppercase text-slate-400">At Risk</div>
+              <div className="mt-1 font-mono text-sm font-bold text-amber-400">
+                {model.atRisk}
               </div>
             </div>
-
-            <div className="px-4 py-3.5 text-center">
-              <div className="text-sm font-bold text-rose-400">
-                <AnimatedNumber value={model.overdue} />
-              </div>
-              <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                Overdue
+            <div>
+              <div className="font-mono text-[9px] uppercase text-slate-400">Overdue</div>
+              <div className="mt-1 font-mono text-sm font-bold text-rose-400">
+                {model.overdue}
               </div>
             </div>
           </div>
         </GlassCard>
       </div>
 
-      {/* SECOND ANALYTICS ROW */}
-      <div className="mt-4 grid gap-4 xl:grid-cols-[1.1fr_1fr_0.9fr]">
+      {/* LOWER DETAILS ROW */}
+      <div className="relative mt-4 grid gap-4 lg:grid-cols-3">
         <GlassCard
-          title="Operations Pipeline"
-          subtitle="Real-time workflow distribution"
-          action={
-            <span className="text-[10px] font-medium text-slate-400">
-              {model.stageCount} stages
-            </span>
-          }
+          title="Pipeline Velocity"
+          subtitle="Stage progression distribution"
+          action={<BarChart3 className="h-4 w-4 text-cyan-400" />}
         >
-          <div className="grid grid-cols-2 gap-3.5 p-6">
-            {model.pipelineStages.slice(0, 4).map((stage) => (
+          <div className="p-6 space-y-3">
+            {model.pipelineStages.map((stg) => (
               <PipelineMini
-                key={stage.label}
-                label={stage.label}
-                value={stage.value}
-                total={Math.max(jobs.length, 1)}
-                color={stage.color}
+                key={stg.label}
+                label={stg.label}
+                value={stg.value}
+                total={jobs.length}
+                color={stg.color}
               />
             ))}
-          </div>
-
-          <div className="border-t border-white/[0.065] px-6 py-4">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-medium text-slate-400">
-                Total completed
-              </span>
-              <span className="text-[11px] font-bold text-emerald-400">
-                <AnimatedNumber value={model.completedJobs.length} />
-              </span>
-            </div>
-
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-emerald-400"
-                style={{
-                  width: `${
-                    jobs.length > 0
-                      ? Math.min(
-                          100,
-                          (model.completedJobs.length / jobs.length) * 100
-                        )
-                      : 0
-                  }%`,
-                  transition: "width 1.5s ease-out",
-                }}
-              />
-            </div>
           </div>
         </GlassCard>
 
         <GlassCard
           title="Stage Workload"
-          subtitle="Resource allocation across workflows"
-          action={<Layers3 className="h-3.5 w-3.5 text-slate-500" />}
+          subtitle="Execution distribution by status"
+          action={<Layers3 className="h-4 w-4 text-cyan-400" />}
         >
           <WorkloadBars
             active={model.workload.active}
@@ -1234,116 +1245,24 @@ export default function Dashboard() {
             approved={model.workload.approved}
             locked={model.workload.locked}
           />
-
-          <div className="border-t border-white/[0.065] px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                  Total stages
-                </div>
-                <div className="mt-0.5 text-base font-bold text-white">
-                  <AnimatedNumber value={stages.length} />
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/[0.06] p-2">
-                <Layers3 className="h-3.5 w-3.5 text-cyan-300" />
-              </div>
-            </div>
-          </div>
         </GlassCard>
 
         <GlassCard
-          title="Live Activity"
-          subtitle="Latest system events"
+          title="Audit Activity"
+          subtitle="Recent operational events"
           action={
-            <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-              Live
-            </span>
+            <Button
+              variant="ghost"
+              onClick={() => navigate("/audit-log")}
+              className="h-6 px-2 font-mono text-[10px] font-semibold text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-300"
+            >
+              View All
+            </Button>
           }
         >
           <ActivityFeed rows={activity} />
         </GlassCard>
       </div>
-
-      {/* BOTTOM COMMAND STRIP */}
-      <div className="mt-4 grid gap-4 md:grid-cols-3">
-        <div className="group flex items-center gap-3.5 rounded-xl border border-white/[0.08] bg-[#10151d] px-5 py-4 transition hover:border-cyan-400/20">
-          <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/[0.06] p-2">
-            <ShieldCheck className="h-3.5 w-3.5 text-cyan-300" />
-          </div>
-
-          <div className="flex-1">
-            <div className="text-[11px] font-semibold text-slate-200">
-              Workflow Integrity
-            </div>
-            <div className="mt-0.5 text-[10px] text-slate-400">
-              SOP execution monitoring
-            </div>
-          </div>
-
-          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-        </div>
-
-        <div className="group flex items-center gap-3.5 rounded-xl border border-white/[0.08] bg-[#10151d] px-5 py-4 transition hover:border-violet-400/20">
-          <div className="rounded-xl border border-violet-400/20 bg-violet-400/[0.06] p-2">
-            <Sparkles className="h-3.5 w-3.5 text-violet-300" />
-          </div>
-
-          <div className="flex-1">
-            <div className="text-[11px] font-semibold text-slate-200">
-              Automation Engine
-            </div>
-            <div className="mt-0.5 text-[10px] text-slate-400">
-              Intelligent process orchestration
-            </div>
-          </div>
-
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-violet-400">
-            Active
-          </span>
-        </div>
-
-        <div className="group flex items-center gap-3.5 rounded-xl border border-white/[0.08] bg-[#10151d] px-5 py-4 transition hover:border-emerald-400/20">
-          <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] p-2">
-            <Settings2 className="h-3.5 w-3.5 text-emerald-300" />
-          </div>
-
-          <div className="flex-1">
-            <div className="text-[11px] font-semibold text-slate-200">
-              System Health
-            </div>
-            <div className="mt-0.5 text-[10px] text-slate-400">
-              Supabase + realtime connectivity
-            </div>
-          </div>
-
-          <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            Normal
-          </span>
-        </div>
-      </div>
-
-      {/* ADMIN ONLY */}
-      {isAdmin && (
-        <div className="mt-4 flex items-center justify-between rounded-xl border border-amber-400/20 bg-amber-400/[0.03] px-6 py-3.5">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
-            <span className="text-[11px] font-medium text-slate-300">
-              Administrative monitoring is enabled.
-            </span>
-          </div>
-
-          <button
-            onClick={() => navigate("/approvals")}
-            className="text-[11px] font-bold text-amber-400 hover:text-amber-300"
-          >
-            Review queue →
-          </button>
-        </div>
-      )}
     </div>
   );
 }

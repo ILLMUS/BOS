@@ -27,14 +27,17 @@ import {
   Plus,
   Trash2,
   Workflow,
+  Sparkles,
+  HelpCircle,
+  Clock,
+  UserCheck,
+  ShieldAlert,
 } from "lucide-react";
 import { toast } from "sonner";
 import { FIELD_TYPE_OPTIONS, slugifyKey, type SopFieldRow } from "@/lib/sopFields";
 import { detectFinanceForm, FINANCE_FORM_LABELS } from "@/lib/stageForms";
 import { useDeferredDelete } from "@/hooks/useDeferredDelete";
 import { autosaveLabel, type AutosaveState } from "@/hooks/useAutosave";
-
-
 import SopTemplateLibrary from "@/components/sop/SopTemplateLibrary";
 
 const NONE = "__none__";
@@ -49,6 +52,7 @@ interface Template {
   is_locked: boolean;
   version_notes: string | null;
 }
+
 interface Stage {
   id: string;
   template_id: string;
@@ -60,9 +64,62 @@ interface Stage {
   sla_hours: number;
   requires_approval: boolean;
 }
+
 interface Role {
   id: string;
   name: string;
+}
+
+/* -------------------------------------------------------
+   BUSINESS OS GLASS CARD CONTAINER
+------------------------------------------------------- */
+function GlassCard({
+  children,
+  className = "",
+  title,
+  subtitle,
+  action,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  title?: React.ReactNode;
+  subtitle?: React.ReactNode;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div
+      className={`
+        relative overflow-hidden rounded-[14px]
+        border border-white/[0.085]
+        bg-[#10151d]/95
+        shadow-[0_18px_60px_rgba(0,0,0,0.24)]
+        transition-all duration-200
+        ${className}
+      `}
+    >
+      <div className="pointer-events-none absolute -right-20 -top-20 h-40 w-40 rounded-full bg-cyan-500/[0.035] blur-3xl" />
+
+      {(title || subtitle || action) && (
+        <div className="relative flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.085] bg-white/[0.02] px-6 py-4">
+          <div>
+            {title && (
+              <div className="text-[13px] font-bold tracking-wide text-white sm:text-sm">
+                {title}
+              </div>
+            )}
+            {subtitle && (
+              <div className="mt-0.5 text-[11px] text-slate-400">
+                {subtitle}
+              </div>
+            )}
+          </div>
+          {action}
+        </div>
+      )}
+
+      {children}
+    </div>
+  );
 }
 
 export default function AdminSopBuilder() {
@@ -86,7 +143,6 @@ export default function AdminSopBuilder() {
     return () => map.forEach((t) => clearTimeout(t));
   }, []);
 
-  /** Saves an edited step or question about a second after typing stops. */
   const scheduleSave = (key: string, run: () => Promise<void>) => {
     const existing = saveTimers.current.get(key);
     if (existing) clearTimeout(existing);
@@ -102,11 +158,9 @@ export default function AdminSopBuilder() {
         } catch {
           setAutoState("error");
         }
-      }, 1000),
+      }, 1000)
     );
   };
-
-
 
   const loadBase = async () => {
     if (!orgId) return;
@@ -129,14 +183,28 @@ export default function AdminSopBuilder() {
       .select("*")
       .eq("template_id", templateId)
       .order("position");
-    const list = (data || []) as unknown as Stage[];
+    
+    const list: Stage[] = (data || []).map((s: any) => ({
+      id: s.id,
+      template_id: s.template_id,
+      position: s.position ?? 0,
+      name: s.name ?? "",
+      description: s.description ?? "",
+      primary_role_id: s.primary_role_id ?? null,
+      secondary_role_id: s.secondary_role_id ?? null,
+      sla_hours: s.sla_hours ?? 0,
+      requires_approval: s.requires_approval ?? false,
+    }));
+
     setStages(list);
+
     if (list.length) {
       const { data: f } = await supabase
         .from("sop_fields")
         .select("*")
         .in("stage_id", list.map((s) => s.id))
         .order("position");
+      
       const map: Record<string, SopFieldRow[]> = {};
       ((f || []) as unknown as SopFieldRow[]).forEach((row) => {
         map[row.stage_id] = [...(map[row.stage_id] || []), row];
@@ -175,7 +243,7 @@ export default function AdminSopBuilder() {
     setNewTemplateName("");
     setTemplates((p) => [...p, data as Template]);
     setActiveTemplate(data.id);
-    toast.success("Workflow created — now add your steps");
+    toast.success("Workflow created — now add your operational steps");
   };
 
   const makeActive = async (id: string) => {
@@ -184,7 +252,7 @@ export default function AdminSopBuilder() {
     const { error } = await supabase.from("sop_templates").update({ is_active: true }).eq("id", id);
     if (error) return toast.error(error.message);
     setTemplates((p) => p.map((t) => ({ ...t, is_active: t.id === id })));
-    toast.success("This workflow is now used for new jobs");
+    toast.success("This workflow is now active for all new jobs");
   };
 
   const deleteTemplate = async (t: Template) => {
@@ -210,7 +278,6 @@ export default function AdminSopBuilder() {
     });
   };
 
-
   const current = templates.find((t) => t.id === activeTemplate) ?? null;
   const locked = !!current?.is_locked;
   const rootOf = (t: Template) => t.root_template_id ?? t.id;
@@ -229,7 +296,7 @@ export default function AdminSopBuilder() {
     if (error) return toast.error(error.message);
     await loadBase();
     setActiveTemplate(data as string);
-    toast.success("New version created — jobs already running keep the old version");
+    toast.success("New version created — existing active jobs will retain the prior version");
   };
 
   const addStage = async () => {
@@ -281,13 +348,25 @@ export default function AdminSopBuilder() {
     if (target < 0 || target >= stages.length) return;
     const reordered = [...stages];
     [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
-    setStages(reordered.map((s, i) => ({ ...s, position: i })));
-    await Promise.all(
-      reordered.map((s, i) => supabase.from("sop_stages").update({ position: i }).eq("id", s.id))
-    );
+    const updated = reordered.map((s, i) => ({ ...s, position: i }));
+    setStages(updated);
+
+    try {
+      await Promise.all(
+        updated.map((s) => supabase.from("sop_stages").update({ position: s.position }).eq("id", s.id))
+      );
+    } catch {
+      toast.error("Could not sync step order");
+    }
   };
 
   const deleteStage = async (s: Stage) => {
+    const timerKey = `stage:${s.id}`;
+    if (saveTimers.current.has(timerKey)) {
+      clearTimeout(saveTimers.current.get(timerKey));
+      saveTimers.current.delete(timerKey);
+    }
+
     const stageFields = fields[s.id] || [];
     await deferredDelete({
       id: s.id,
@@ -310,7 +389,6 @@ export default function AdminSopBuilder() {
       },
     });
   };
-
 
   const addField = async (stageId: string) => {
     if (!orgId) return;
@@ -341,7 +419,9 @@ export default function AdminSopBuilder() {
     });
 
   const saveField = async (stageId: string, f: SopFieldRow, silent = false) => {
-    const nextKey = slugifyKey(f.label) + "_" + f.id.slice(0, 4);
+    const baseSlug = slugifyKey(f.label) || "field";
+    const nextKey = `${baseSlug}_${f.id.slice(0, 8)}`;
+
     const { error } = await supabase
       .from("sop_fields")
       .update({
@@ -354,18 +434,29 @@ export default function AdminSopBuilder() {
         options: f.options,
       })
       .eq("id", f.id);
+
     if (error) {
       toast.error(error.message);
       throw error;
     }
-    setFields((p) => ({
-      ...p,
-      [stageId]: (p[stageId] || []).map((x) => (x.id === f.id ? { ...x, field_key: nextKey } : x)),
-    }));
+
+    if (f.field_key !== nextKey) {
+      setFields((p) => ({
+        ...p,
+        [stageId]: (p[stageId] || []).map((x) => (x.id === f.id ? { ...x, field_key: nextKey } : x)),
+      }));
+    }
+
     if (!silent) toast.success("Question saved");
   };
 
   const deleteField = async (stageId: string, f: SopFieldRow) => {
+    const timerKey = `field:${f.id}`;
+    if (saveTimers.current.has(timerKey)) {
+      clearTimeout(saveTimers.current.get(timerKey));
+      saveTimers.current.delete(timerKey);
+    }
+
     await deferredDelete({
       id: f.id,
       label: f.label,
@@ -386,49 +477,69 @@ export default function AdminSopBuilder() {
     });
   };
 
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+      <div className="flex h-48 items-center justify-center text-[11px] text-slate-400">
+        <Loader2 className="mr-2 h-4 w-4 animate-spin text-cyan-400" />
+        Loading SOP workflows...
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Workflow className="h-6 w-6 text-accent" />
-        <h1 className="font-heading text-2xl font-bold">SOP Builder</h1>
-        {autoState !== "idle" && (
-          <span className={`text-xs ${autoState === "error" ? "text-destructive" : "text-muted-foreground"}`}>
-            {autosaveLabel(autoState)}
-          </span>
-        )}
+    <div className="space-y-5 text-slate-200">
+      {/* HEADER BAR */}
+      <div className="flex flex-col gap-1 border-b border-white/[0.065] pb-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-400/10 text-cyan-300">
+            <Workflow className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
+                SOP Builder
+              </h1>
+              {autoState !== "idle" && (
+                <span
+                  className={`rounded-full border px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider ${
+                    autoState === "error"
+                      ? "border-rose-500/30 bg-rose-500/10 text-rose-300"
+                      : "border-cyan-400/30 bg-cyan-400/10 text-cyan-300"
+                  }`}
+                >
+                  {autosaveLabel(autoState)}
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Configure standardized operational processes, assign responsibilities, and set stage-by-stage requirements.
+            </p>
+          </div>
+        </div>
       </div>
-      <p className="text-sm text-muted-foreground">
-        Answer the questions below and the app builds your workflow. Every step, owner, deadline and form
-        question is yours — it works for trades, catering, clinics, logistics, retail, anything.
-      </p>
 
-      {/* Step 1: workflows */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">1. What process are you running?</CardTitle>
-          <CardDescription>Create a workflow, then mark the one new jobs should follow.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-2">
+      {/* STEP 1: WORKFLOW TEMPLATES */}
+      <GlassCard
+        title="1. Select or Create a Workflow Process"
+        subtitle="Specify which process structure active projects should enforce."
+      >
+        <div className="space-y-4 p-5">
+          <div className="flex flex-wrap items-center gap-2">
             <Input
-              className="max-w-xs"
+              className="h-9 max-w-xs rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-200 placeholder:text-slate-600 focus:border-cyan-400/40 focus:ring-cyan-400/20"
               value={newTemplateName}
               onChange={(e) => setNewTemplateName(e.target.value)}
-              placeholder="e.g. Client Onboarding, Catering Order"
+              placeholder="e.g. Client Onboarding, Site Inspection"
             />
-            <Button onClick={createTemplate} disabled={busy || !newTemplateName.trim()}>
-              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+            <Button
+              onClick={createTemplate}
+              disabled={busy || !newTemplateName.trim()}
+              className="h-9 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold text-[11px] transition-colors"
+            >
+              {busy ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Plus className="mr-2 h-3.5 w-3.5" />}
               New Workflow
             </Button>
+
             <SopTemplateLibrary
               orgId={orgId}
               userId={user?.id}
@@ -438,42 +549,54 @@ export default function AdminSopBuilder() {
               }}
             />
           </div>
-          <p className="text-xs text-muted-foreground">
-            Not sure where to start? Browse the template library for a ready-made workflow for your
-            niche, then edit every step, owner and question.
+
+          <p className="text-[11px] text-slate-400">
+            Select a template from the library or create a custom process from scratch.
           </p>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 pt-1">
             {visibleTemplates.map((t) => (
               <div
                 key={t.id}
-                className={`flex items-center gap-2 rounded border px-3 py-2 text-sm ${
-                  activeTemplate === t.id ? "border-accent bg-accent/5" : "border-border"
+                className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-[11px] transition-all ${
+                  activeTemplate === t.id
+                    ? "border-cyan-400/40 bg-cyan-400/10 text-white shadow-[0_0_15px_rgba(34,211,238,0.1)]"
+                    : "border-white/[0.08] bg-white/[0.02] text-slate-300 hover:bg-white/[0.04]"
                 }`}
               >
-                <button className="font-medium" onClick={() => setActiveTemplate(t.id)}>
+                <button className="font-semibold text-slate-100" onClick={() => setActiveTemplate(t.id)}>
                   {t.name}
                 </button>
-                <Badge variant="outline" className="font-mono text-[10px]">v{t.version}</Badge>
+                <span className="rounded-md border border-white/10 bg-white/[0.03] px-1.5 py-0.5 font-mono text-[9px] text-slate-400">
+                  v{t.version}
+                </span>
+
                 {t.is_locked && (
-                  <Badge variant="outline" className="gap-1 text-[10px] text-muted-foreground">
-                    <Lock className="h-3 w-3" /> Archived
-                  </Badge>
+                  <span className="inline-flex items-center gap-1 rounded-md border border-slate-500/30 bg-slate-500/10 px-1.5 py-0.5 text-[9px] text-slate-400">
+                    <Lock className="h-2.5 w-2.5" /> Archived
+                  </span>
                 )}
+
                 {t.is_active ? (
-                  <Badge variant="outline" className="border-success text-success">
-                    <CheckCircle2 className="mr-1 h-3 w-3" /> Live
-                  </Badge>
+                  <span className="inline-flex items-center rounded-md border border-emerald-400/30 bg-emerald-400/10 px-1.5 py-0.5 font-mono text-[9px] font-bold text-emerald-300 uppercase">
+                    <CheckCircle2 className="mr-1 h-2.5 w-2.5" /> Active
+                  </span>
                 ) : !t.is_locked ? (
-                  <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => makeActive(t.id)}>
-                    Use this
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 rounded-lg px-2 text-[10px] text-cyan-300 hover:bg-cyan-400/10"
+                    onClick={() => makeActive(t.id)}
+                  >
+                    Set Active
                   </Button>
                 ) : null}
+
                 {!t.is_locked && (
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 text-destructive"
+                    className="h-6 w-6 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
                     onClick={() => deleteTemplate(t)}
                   >
                     <Trash2 className="h-3 w-3" />
@@ -481,275 +604,343 @@ export default function AdminSopBuilder() {
                 )}
               </div>
             ))}
+
             {templates.length === 0 && (
-              <p className="text-sm text-muted-foreground">No workflows yet — create your first one above.</p>
+              <p className="text-[11px] text-slate-400">No workflows found. Create your first process above.</p>
             )}
           </div>
 
           {templates.some((t) => t.is_locked) && (
-            <Button variant="ghost" size="sm" className="text-xs" onClick={() => setShowArchived((v) => !v)}>
-              <History className="mr-1 h-3 w-3" />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-[10px] text-slate-400 hover:text-slate-200"
+              onClick={() => setShowArchived((v) => !v)}
+            >
+              <History className="mr-1.5 h-3 w-3 text-cyan-400" />
               {showArchived ? "Hide archived versions" : "Show archived versions"}
             </Button>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
 
-      {/* Versioning */}
+      {/* VERSION MANAGEMENT */}
       {current && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Versions of “{current.name}”</CardTitle>
-            <CardDescription>
-              Jobs stay attached to the exact version they started on. Publish a new version to change the
-              workflow for future jobs without touching work already in progress.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" disabled={busy} onClick={() => publishNewVersion(current.id)}>
-                {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GitBranch className="mr-2 h-4 w-4" />}
-                Publish v{Math.max(...versionHistory.map((v) => v.version), current.version) + 1} (copy of v{current.version})
+        <GlassCard
+          title={`Versions of "${current.name}"`}
+          subtitle="Running jobs retain the version active when initiated. Creating a new version affects future work."
+        >
+          <div className="space-y-3 p-5">
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={busy}
+                onClick={() => publishNewVersion(current.id)}
+                className="h-8 rounded-xl border-white/[0.08] bg-white/[0.02] text-[11px] text-slate-200 hover:bg-white/[0.06]"
+              >
+                {busy ? (
+                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin text-cyan-400" />
+                ) : (
+                  <GitBranch className="mr-2 h-3.5 w-3.5 text-cyan-400" />
+                )}
+                Publish v{Math.max(...versionHistory.map((v) => v.version), current.version) + 1} (Copy of v{current.version})
               </Button>
+
               {locked && (
-                <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Lock className="h-3 w-3" /> This version is archived and read-only.
+                <span className="inline-flex items-center gap-1.5 text-[11px] text-amber-400">
+                  <Lock className="h-3 w-3" /> Active template version is locked and read-only.
                 </span>
               )}
             </div>
 
-            <div className="divide-y divide-border rounded border border-border text-sm">
+            <div className="divide-y divide-white/[0.06] rounded-xl border border-white/[0.08] bg-[#0b0e14]/50">
               {versionHistory.map((v) => (
                 <button
                   key={v.id}
                   onClick={() => setActiveTemplate(v.id)}
-                  className={`flex w-full items-center gap-3 p-3 text-left ${
-                    v.id === current.id ? "bg-accent/5" : ""
+                  className={`flex w-full items-center gap-3 p-3 text-left transition-colors ${
+                    v.id === current.id ? "bg-cyan-400/[0.06]" : "hover:bg-white/[0.02]"
                   }`}
                 >
-                  <Badge variant="outline" className="font-mono">v{v.version}</Badge>
-                  <span className="flex-1 truncate text-muted-foreground">
+                  <span className="rounded-md border border-white/10 bg-white/[0.03] px-1.5 py-0.5 font-mono text-[9px] text-slate-300">
+                    v{v.version}
+                  </span>
+                  <span className="flex-1 truncate text-[11px] text-slate-400">
                     {v.version_notes || (v.is_locked ? "Archived version" : "Editable draft")}
                   </span>
                   {v.is_active && (
-                    <Badge variant="outline" className="border-success text-success">Live</Badge>
+                    <span className="rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 font-mono text-[9px] font-bold text-emerald-300 uppercase">
+                      Live
+                    </span>
                   )}
                 </button>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </GlassCard>
       )}
 
-      {/* Step 2: stages */}
+      {/* STEP 2: STAGE CONFIGURATION */}
       {activeTemplate && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">2. What are the steps, in order?</CardTitle>
-            <CardDescription>
-              Each step locks until the one before it is approved, so work can never skip ahead.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <fieldset disabled={locked} className="space-y-3 disabled:opacity-70">
-            {stages.map((s, idx) => (
-              <div key={s.id} className="rounded border border-border">
-                <div className="flex items-center gap-2 p-3">
-                  <Badge variant="outline" className="font-mono">{idx + 1}</Badge>
-                  <button
-                    className="flex-1 text-left font-medium"
-                    onClick={() => setOpenStage(openStage === s.id ? null : s.id)}
-                  >
-                    {s.name}
-                    <span className="ml-2 text-xs text-muted-foreground">
-                      {(fields[s.id] || []).length} question(s)
+        <GlassCard
+          title="2. Sequence Steps & Requirements"
+          subtitle="Configure stage sequence, responsible operational roles, SLA timelines, and required fields."
+        >
+          <div className="p-5">
+            <fieldset disabled={locked} className="space-y-3 disabled:opacity-60">
+              {stages.map((s, idx) => (
+                <div key={s.id} className="rounded-xl border border-white/[0.08] bg-white/[0.015]">
+                  <div className="flex items-center gap-3 p-3.5">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg border border-cyan-400/30 bg-cyan-400/10 font-mono text-[10px] font-bold text-cyan-300">
+                      {idx + 1}
                     </span>
-                    {detectFinanceForm(s.name) && (
-                      <Badge variant="outline" className="ml-2 border-accent text-accent">
-                        {FINANCE_FORM_LABELS[detectFinanceForm(s.name)!]}
-                      </Badge>
-                    )}
 
-                  </button>
-                  <Button variant="ghost" size="icon" onClick={() => moveStage(idx, -1)}>
-                    <ArrowUp className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => moveStage(idx, 1)}>
-                    <ArrowDown className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive"
-                    onClick={() => deleteStage(s)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                    <button
+                      className="flex-1 text-left font-semibold text-slate-100 text-[12px]"
+                      onClick={() => setOpenStage(openStage === s.id ? null : s.id)}
+                    >
+                      {s.name}
+                      <span className="ml-2 text-[10px] text-slate-400 font-normal">
+                        ({(fields[s.id] || []).length} field questions)
+                      </span>
+                      {detectFinanceForm(s.name) && (
+                        <span className="ml-2 rounded-md border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 font-mono text-[9px] text-cyan-300 uppercase">
+                          {FINANCE_FORM_LABELS[detectFinanceForm(s.name)!]}
+                        </span>
+                      )}
+                    </button>
 
-                {openStage === s.id && (
-                  <div className="space-y-4 border-t border-border p-4">
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="space-y-1.5">
-                        <Label>Step name</Label>
-                        <Input value={s.name} onChange={(e) => patchStage(s.id, { name: e.target.value })} />
-                        <p className="text-xs text-muted-foreground">
-                          {detectFinanceForm(s.name)
-                            ? `Money step: this step opens the built-in ${FINANCE_FORM_LABELS[detectFinanceForm(s.name)!].toLowerCase()} with the client's details and figures already filled in.`
-                            : "Tip: name a step Quotation, Invoice or Receipt and it automatically opens the matching money form instead of plain questions."}
-                        </p>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={locked}
+                      className="h-7 w-7 text-slate-400 hover:text-white"
+                      onClick={() => moveStage(idx, -1)}
+                    >
+                      <ArrowUp className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={locked}
+                      className="h-7 w-7 text-slate-400 hover:text-white"
+                      onClick={() => moveStage(idx, 1)}
+                    >
+                      <ArrowDown className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={locked}
+                      className="h-7 w-7 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
+                      onClick={() => deleteStage(s)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+
+                  {openStage === s.id && (
+                    <div className="space-y-4 border-t border-white/[0.08] p-4 bg-white/[0.01]">
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-semibold text-slate-300">Step Name</Label>
+                          <Input
+                            className="h-9 rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-200 focus:border-cyan-400/40 focus:ring-cyan-400/20"
+                            value={s.name}
+                            onChange={(e) => patchStage(s.id, { name: e.target.value })}
+                          />
+                          <p className="text-[10px] text-slate-400">
+                            {detectFinanceForm(s.name)
+                              ? `Finance module detected: automatically provisions built-in ${FINANCE_FORM_LABELS[detectFinanceForm(s.name)!].toLowerCase()} workspace.`
+                              : "Tip: naming a step Quotation, Invoice, or Receipt provisions appropriate financial form modules."}
+                          </p>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-semibold text-slate-300">Target SLA (Hours)</Label>
+                          <Input
+                            type="number"
+                            className="h-9 rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-200 focus:border-cyan-400/40 focus:ring-cyan-400/20"
+                            value={s.sla_hours}
+                            onChange={(e) => patchStage(s.id, { sla_hours: Number(e.target.value) })}
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-semibold text-slate-300">Primary Role Responsible</Label>
+                          <Select
+                            value={s.primary_role_id ?? NONE}
+                            onValueChange={(v) => patchStage(s.id, { primary_role_id: v === NONE ? null : v })}
+                          >
+                            <SelectTrigger className="h-9 rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-200 focus:border-cyan-400/40 focus:ring-cyan-400/20">
+                              <SelectValue placeholder="Select primary role" />
+                            </SelectTrigger>
+                            <SelectContent className="border-white/[0.085] bg-[#10151d] text-slate-200">
+                              <SelectItem value={NONE} className="text-[11px] text-slate-400">
+                                Unassigned
+                              </SelectItem>
+                              {roles.map((r) => (
+                                <SelectItem key={r.id} value={r.id} className="text-[11px]">
+                                  {r.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-semibold text-slate-300">Secondary Role / Approver</Label>
+                          <Select
+                            value={s.secondary_role_id ?? NONE}
+                            onValueChange={(v) => patchStage(s.id, { secondary_role_id: v === NONE ? null : v })}
+                          >
+                            <SelectTrigger className="h-9 rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-200 focus:border-cyan-400/40 focus:ring-cyan-400/20">
+                              <SelectValue placeholder="None" />
+                            </SelectTrigger>
+                            <SelectContent className="border-white/[0.085] bg-[#10151d] text-slate-200">
+                              <SelectItem value={NONE} className="text-[11px] text-slate-400">
+                                None
+                              </SelectItem>
+                              {roles.map((r) => (
+                                <SelectItem key={r.id} value={r.id} className="text-[11px]">
+                                  {r.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
 
                       <div className="space-y-1.5">
-                        <Label>Deadline (hours)</Label>
-                        <Input
-                          type="number"
-                          value={s.sla_hours}
-                          onChange={(e) => patchStage(s.id, { sla_hours: Number(e.target.value) })}
+                        <Label className="text-[11px] font-semibold text-slate-300">Stage Guidance & Instructions</Label>
+                        <Textarea
+                          className="rounded-xl border-white/[0.08] bg-[#0b0e14] text-[11px] text-slate-200 placeholder:text-slate-600 focus:border-cyan-400/40 focus:ring-cyan-400/20"
+                          value={s.description || ""}
+                          rows={2}
+                          onChange={(e) => patchStage(s.id, { description: e.target.value })}
+                          placeholder="Provide step instructions for team members execution..."
                         />
                       </div>
-                      <div className="space-y-1.5">
-                        <Label>Who is responsible?</Label>
-                        <Select
-                          value={s.primary_role_id ?? NONE}
-                          onValueChange={(v) => patchStage(s.id, { primary_role_id: v === NONE ? null : v })}
-                        >
-                          <SelectTrigger><SelectValue placeholder="Pick a role" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value={NONE}>Unassigned</SelectItem>
-                            {roles.map((r) => (
-                              <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Backup / approver</Label>
-                        <Select
-                          value={s.secondary_role_id ?? NONE}
-                          onValueChange={(v) => patchStage(s.id, { secondary_role_id: v === NONE ? null : v })}
-                        >
-                          <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value={NONE}>None</SelectItem>
-                            {roles.map((r) => (
-                              <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
 
-                    <div className="space-y-1.5">
-                      <Label>Instructions for the person doing this step</Label>
-                      <Textarea
-                        value={s.description || ""}
-                        rows={2}
-                        onChange={(e) => patchStage(s.id, { description: e.target.value })}
-                      />
-                    </div>
+                      {/* FIELDS SECTION */}
+                      <div className="space-y-3 border-t border-white/[0.08] pt-4">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-[11px] font-bold text-slate-200">
+                            Required Input Fields & Questions
+                          </Label>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => addField(s.id)}
+                            className="h-8 rounded-xl border-white/[0.08] bg-white/[0.02] text-[11px] text-cyan-300 hover:bg-white/[0.06]"
+                          >
+                            <Plus className="mr-1.5 h-3.5 w-3.5" /> Add Question
+                          </Button>
+                        </div>
 
-                    <Button variant="outline" size="sm" onClick={() => saveStage(s)}>
-                      Save step
-                    </Button>
+                        {(fields[s.id] || []).map((f) => (
+                          <div key={f.id} className="space-y-3 rounded-xl border border-white/[0.06] bg-[#0b0e14]/60 p-3.5">
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <div className="space-y-1.5">
+                                <Label className="text-[10px] text-slate-400">Question / Field Label</Label>
+                                <Input
+                                  className="h-8 rounded-lg border-white/[0.08] bg-[#10151d] text-[11px] text-slate-200 focus:border-cyan-400/40"
+                                  value={f.label}
+                                  onChange={(e) => patchField(s.id, f.id, { label: e.target.value })}
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label className="text-[10px] text-slate-400">Data Type</Label>
+                                <Select
+                                  value={f.field_type}
+                                  onValueChange={(v) => patchField(s.id, f.id, { field_type: v })}
+                                >
+                                  <SelectTrigger className="h-8 rounded-lg border-white/[0.08] bg-[#10151d] text-[11px] text-slate-200 focus:border-cyan-400/40">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="border-white/[0.085] bg-[#10151d] text-slate-200">
+                                    {FIELD_TYPE_OPTIONS.map((o) => (
+                                      <SelectItem key={o.value} value={o.value} className="text-[11px]">
+                                        {o.label} — <span className="text-slate-400">{o.hint}</span>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
 
-                    {/* Fields */}
-                    <div className="space-y-3 border-t border-border pt-4">
-                      <div className="flex items-center justify-between">
-                        <Label>3. What must be captured at this step?</Label>
-                        <Button variant="outline" size="sm" onClick={() => addField(s.id)}>
-                          <Plus className="mr-1 h-3 w-3" /> Add question
-                        </Button>
-                      </div>
+                            {f.field_type === "select" && (
+                              <div className="space-y-1.5">
+                                <Label className="text-[10px] text-slate-400">Select Options (One option per line)</Label>
+                                <Textarea
+                                  rows={3}
+                                  className="rounded-lg border-white/[0.08] bg-[#10151d] text-[11px] text-slate-200 focus:border-cyan-400/40"
+                                  value={(Array.isArray(f.options) ? f.options : []).join("\n")}
+                                  onChange={(e) =>
+                                    patchField(s.id, f.id, {
+                                      options: e.target.value.split("\n").filter((x) => x.trim() !== ""),
+                                    })
+                                  }
+                                />
+                              </div>
+                            )}
 
-                      {(fields[s.id] || []).map((f) => (
-                        <div key={f.id} className="space-y-3 rounded border border-border bg-muted/30 p-3">
-                          <div className="grid gap-3 sm:grid-cols-2">
                             <div className="space-y-1.5">
-                              <Label>Question / label</Label>
+                              <Label className="text-[10px] text-slate-400">Help / Contextual Guidance</Label>
                               <Input
-                                value={f.label}
-                                onChange={(e) => patchField(s.id, f.id, { label: e.target.value })}
+                                className="h-8 rounded-lg border-white/[0.08] bg-[#10151d] text-[11px] text-slate-200 focus:border-cyan-400/40"
+                                value={f.help_text || ""}
+                                onChange={(e) => patchField(s.id, f.id, { help_text: e.target.value })}
                               />
                             </div>
-                            <div className="space-y-1.5">
-                              <Label>Answer type</Label>
-                              <Select
-                                value={f.field_type}
-                                onValueChange={(v) => patchField(s.id, f.id, { field_type: v })}
-                              >
-                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  {FIELD_TYPE_OPTIONS.map((o) => (
-                                    <SelectItem key={o.value} value={o.value}>
-                                      {o.label} — {o.hint}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
 
-                          {f.field_type === "select" && (
-                            <div className="space-y-1.5">
-                              <Label>Dropdown options (one per line)</Label>
-                              <Textarea
-                                rows={3}
-                                value={(Array.isArray(f.options) ? f.options : []).join("\n")}
-                                onChange={(e) =>
-                                  patchField(s.id, f.id, {
-                                    options: e.target.value.split("\n").filter((x) => x.trim() !== ""),
-                                  })
-                                }
-                              />
-                            </div>
-                          )}
+                            <div className="flex items-center justify-between pt-1">
+                              <label className="flex items-center gap-2 text-[11px] text-slate-300">
+                                <Checkbox
+                                  checked={f.required}
+                                  onCheckedChange={(v) => patchField(s.id, f.id, { required: !!v })}
+                                  className="border-white/20 data-[state=checked]:bg-cyan-500 data-[state=checked]:border-cyan-500 data-[state=checked]:text-slate-950"
+                                />
+                                Mandatory field for stage completion
+                              </label>
 
-                          <div className="space-y-1.5">
-                            <Label>Helper text (optional)</Label>
-                            <Input
-                              value={f.help_text || ""}
-                              onChange={(e) => patchField(s.id, f.id, { help_text: e.target.value })}
-                            />
-                          </div>
-
-                          <div className="flex items-center justify-between">
-                            <label className="flex items-center gap-2 text-sm">
-                              <Checkbox
-                                checked={f.required}
-                                onCheckedChange={(v) => patchField(s.id, f.id, { required: !!v })}
-                              />
-                              Required before the step can be approved
-                            </label>
-                            <div className="flex gap-2">
-                              <Button variant="outline" size="sm" onClick={() => saveField(s.id, f)}>
-                                Save
-                              </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="text-destructive"
+                                className="h-7 w-7 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
                                 onClick={() => deleteField(s.id, f)}
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
+                  )}
+                </div>
+              ))}
 
-            <Button variant="outline" onClick={addStage}>
-              <Plus className="mr-2 h-4 w-4" /> Add step
-            </Button>
+              <Button
+                variant="outline"
+                onClick={addStage}
+                className="h-9 w-full rounded-xl border-dashed border-white/20 bg-white/[0.01] text-[11px] text-slate-300 hover:bg-white/[0.04] hover:text-white"
+              >
+                <Plus className="mr-2 h-3.5 w-3.5 text-cyan-400" /> Add Workflow Step
+              </Button>
             </fieldset>
-          </CardContent>
-        </Card>
+          </div>
+        </GlassCard>
       )}
+
+      {/* FOOTER TIP */}
+      <div className="flex items-center gap-2 text-[11px] text-slate-400">
+        <span className="inline-flex items-center rounded-md border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 text-[10px] font-bold text-cyan-300 uppercase tracking-wider">
+          Tip
+        </span>
+        Workflow steps sequentially lock until prior stages receive completion approval.
+      </div>
     </div>
   );
 }

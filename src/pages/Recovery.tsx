@@ -8,7 +8,8 @@ import { toast } from "@/hooks/use-toast";
 import { formatDate } from "@/lib/crm";
 import { clearDraft } from "@/hooks/useAutosave";
 import { formatDraftAge, listPendingDrafts, clearDraft as clearStageDraft } from "@/lib/offlineDraft";
-import { FileClock, GitBranch, Loader2, Megaphone, RotateCcw, Trash2 } from "lucide-react";
+import { FileClock, GitBranch, Loader2, Megaphone, RotateCcw, Trash2, LifeBuoy } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Campaign = Tables<"campaigns">;
@@ -109,118 +110,269 @@ export default function Recovery() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <Loader2 className="h-7 w-7 animate-spin text-teal-400" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Recovery Centre</h1>
-        <p className="text-sm text-muted-foreground">
+    <div className="mx-auto max-w-5xl space-y-6 min-w-0 pb-12 text-white">
+      {/* HEADER SECTION */}
+      <div className="space-y-1 min-w-0">
+        <h1 className="flex items-center gap-2.5 text-xl font-bold tracking-tight text-white sm:text-2xl min-w-0">
+          <motion.div
+            whileHover={{ rotate: 15, scale: 1.1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 15 }}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-teal-400/20 bg-teal-500/10 text-teal-400 shadow-inner"
+          >
+            <LifeBuoy className="h-5 w-5" />
+          </motion.div>
+          <span className="truncate">Recovery Centre</span>
+        </h1>
+        <p className="break-words text-xs sm:text-sm text-slate-400">
           {total === 0
             ? "Nothing waiting to be recovered — everything you started has been saved or cleared."
             : `${total} item${total === 1 ? "" : "s"} you can bring back or clear out.`}
         </p>
       </div>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <FileClock className="h-4 w-4" /> Unfinished on this device
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {local.length === 0 && stageDrafts.length === 0 && (
-            <p className="text-sm text-muted-foreground">No unfinished forms saved here.</p>
-          )}
-          {local.map((d) => (
-            <div key={d.key} className="flex items-center justify-between gap-3 border border-border p-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{d.summary}</p>
-                <p className="text-xs text-muted-foreground">{d.label}</p>
-              </div>
-              <div className="flex shrink-0 gap-2">
-                <Button size="sm" variant="outline" onClick={() => navigate(d.to)}>Continue</Button>
-                <Button size="sm" variant="ghost" onClick={() => discardLocal(d)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
-          {stageDrafts.map((d) => (
-            <div key={d.stageId} className="flex items-center justify-between gap-3 border border-border p-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">Job step not yet sent up</p>
-                <p className="text-xs text-muted-foreground">Kept {formatDraftAge(d.savedAt)}</p>
-              </div>
-              <div className="flex shrink-0 gap-2">
-                <Button size="sm" variant="outline" onClick={() => navigate(`/jobs/${d.jobId}`)}>Open job</Button>
-                <Button size="sm" variant="ghost" onClick={() => discardStage(d.stageId)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      {/* DEVICE DRAFTS CARD */}
+      <div className="relative w-full min-w-0 group">
+        <motion.div
+          animate={{
+            x: [-15, 15, -15],
+            y: [-8, 8, -8],
+            opacity: [0.25, 0.5, 0.25],
+            scale: [0.98, 1.02, 0.98],
+          }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-teal-500/20 via-emerald-500/10 to-teal-400/25 blur-xl pointer-events-none"
+        />
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Megaphone className="h-4 w-4" /> Campaigns in trash
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {campaigns.length === 0 && <p className="text-sm text-muted-foreground">Trash is empty.</p>}
-          {campaigns.map((c) => (
-            <div key={c.id} className="flex items-center justify-between gap-3 border border-border p-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{c.name}</p>
-                <p className="text-xs text-muted-foreground">Deleted {formatDate(c.deleted_at as string)}</p>
+        <Card className="relative w-full min-w-0 overflow-hidden border-white/[0.08] bg-[#05131a]/80 text-white shadow-2xl backdrop-blur-md">
+          <CardHeader className="border-b border-white/[0.06] p-4 sm:p-6">
+            <CardTitle className="flex items-center gap-2.5 text-base font-bold tracking-tight text-white sm:text-lg min-w-0">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-teal-400/20 bg-teal-500/10 text-teal-400">
+                <FileClock className="h-4 w-4" />
               </div>
-              <div className="flex shrink-0 gap-2">
-                <Button size="sm" variant="outline" onClick={() => restoreCampaign(c)}>
-                  <RotateCcw className="mr-1 h-3 w-3" /> Restore
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => deleteCampaign(c)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+              <span className="truncate">Unfinished on this device</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 text-xs sm:p-6 sm:text-sm min-w-0 space-y-2">
+            {local.length === 0 && stageDrafts.length === 0 && (
+              <p className="text-xs text-slate-400 py-2">No unfinished forms saved here.</p>
+            )}
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <GitBranch className="h-4 w-4" /> Workflow drafts
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {templates.length === 0 && <p className="text-sm text-muted-foreground">No unpublished workflows.</p>}
-          {templates.map((t) => (
-            <div key={t.id} className="flex items-center justify-between gap-3 border border-border p-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{t.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  Last edited {formatDate(t.updated_at)}
-                  {t.version ? ` · version ${t.version}` : ""}
-                </p>
+            <AnimatePresence>
+              {local.map((d) => (
+                <motion.div
+                  key={d.key}
+                  layout
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-[#02080b]/60 p-3.5 min-w-0 transition-colors hover:border-white/20"
+                >
+                  <div className="min-w-0 space-y-0.5">
+                    <p className="truncate text-xs sm:text-sm font-semibold text-white">{d.summary}</p>
+                    <p className="text-[11px] text-slate-400 truncate">{d.label}</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => navigate(d.to)}
+                      className="h-8 border-white/10 bg-[#030d12] text-xs font-semibold text-slate-200 hover:bg-white/10 hover:text-white"
+                    >
+                      Continue
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => discardLocal(d)}
+                      className="h-8 w-8 text-slate-400 hover:bg-rose-500/10 hover:text-rose-400"
+                      aria-label="Discard draft"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </motion.div>
+              ))}
+
+              {stageDrafts.map((d) => (
+                <motion.div
+                  key={d.stageId}
+                  layout
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-[#02080b]/60 p-3.5 min-w-0 transition-colors hover:border-white/20"
+                >
+                  <div className="min-w-0 space-y-0.5">
+                    <p className="truncate text-xs sm:text-sm font-semibold text-white">Job step not yet sent up</p>
+                    <p className="text-[11px] text-slate-400 truncate">Kept {formatDraftAge(d.savedAt)}</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => navigate(`/jobs/${d.jobId}`)}
+                      className="h-8 border-white/10 bg-[#030d12] text-xs font-semibold text-slate-200 hover:bg-white/10 hover:text-white"
+                    >
+                      Open job
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => discardStage(d.stageId)}
+                      className="h-8 w-8 text-slate-400 hover:bg-rose-500/10 hover:text-rose-400"
+                      aria-label="Discard step draft"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* CAMPAIGN TRASH CARD */}
+      <div className="relative w-full min-w-0 group">
+        <motion.div
+          animate={{
+            x: [-15, 15, -15],
+            y: [-8, 8, -8],
+            opacity: [0.2, 0.45, 0.2],
+            scale: [0.98, 1.02, 0.98],
+          }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+          className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-teal-500/20 via-emerald-500/10 to-teal-400/25 blur-xl pointer-events-none"
+        />
+
+        <Card className="relative w-full min-w-0 overflow-hidden border-white/[0.08] bg-[#05131a]/80 text-white shadow-2xl backdrop-blur-md">
+          <CardHeader className="border-b border-white/[0.06] p-4 sm:p-6">
+            <CardTitle className="flex items-center gap-2.5 text-base font-bold tracking-tight text-white sm:text-lg min-w-0">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-teal-400/20 bg-teal-500/10 text-teal-400">
+                <Megaphone className="h-4 w-4" />
               </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <Badge variant="outline" className="text-[10px]">Not published</Badge>
-                <Button size="sm" variant="outline" onClick={() => navigate("/admin/sop")}>Open</Button>
-                <Button size="sm" variant="ghost" onClick={() => deleteTemplate(t)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+              <span className="truncate">Campaigns in trash</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 text-xs sm:p-6 sm:text-sm min-w-0 space-y-2">
+            {campaigns.length === 0 && <p className="text-xs text-slate-400 py-2">Trash is empty.</p>}
+
+            <AnimatePresence>
+              {campaigns.map((c) => (
+                <motion.div
+                  key={c.id}
+                  layout
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-[#02080b]/60 p-3.5 min-w-0 transition-colors hover:border-white/20"
+                >
+                  <div className="min-w-0 space-y-0.5">
+                    <p className="truncate text-xs sm:text-sm font-semibold text-white">{c.name}</p>
+                    <p className="text-[11px] text-slate-400 truncate">Deleted {formatDate(c.deleted_at as string)}</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => restoreCampaign(c)}
+                      className="h-8 border-teal-500/30 bg-teal-500/10 text-xs font-semibold text-teal-300 hover:bg-teal-500/20"
+                    >
+                      <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Restore
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => deleteCampaign(c)}
+                      className="h-8 w-8 text-slate-400 hover:bg-rose-500/10 hover:text-rose-400"
+                      aria-label="Delete campaign permanently"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* WORKFLOW DRAFTS CARD */}
+      <div className="relative w-full min-w-0 group">
+        <motion.div
+          animate={{
+            x: [-15, 15, -15],
+            y: [-8, 8, -8],
+            opacity: [0.2, 0.45, 0.2],
+            scale: [0.98, 1.02, 0.98],
+          }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+          className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-teal-500/20 via-emerald-500/10 to-teal-400/25 blur-xl pointer-events-none"
+        />
+
+        <Card className="relative w-full min-w-0 overflow-hidden border-white/[0.08] bg-[#05131a]/80 text-white shadow-2xl backdrop-blur-md">
+          <CardHeader className="border-b border-white/[0.06] p-4 sm:p-6">
+            <CardTitle className="flex items-center gap-2.5 text-base font-bold tracking-tight text-white sm:text-lg min-w-0">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-teal-400/20 bg-teal-500/10 text-teal-400">
+                <GitBranch className="h-4 w-4" />
               </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+              <span className="truncate">Workflow drafts</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 text-xs sm:p-6 sm:text-sm min-w-0 space-y-2">
+            {templates.length === 0 && <p className="text-xs text-slate-400 py-2">No unpublished workflows.</p>}
+
+            <AnimatePresence>
+              {templates.map((t) => (
+                <motion.div
+                  key={t.id}
+                  layout
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-[#02080b]/60 p-3.5 min-w-0 transition-colors hover:border-white/20"
+                >
+                  <div className="min-w-0 space-y-0.5">
+                    <p className="truncate text-xs sm:text-sm font-semibold text-white">{t.name}</p>
+                    <p className="text-[11px] text-slate-400 truncate">
+                      Last edited {formatDate(t.updated_at)}
+                      {t.version ? ` · version ${t.version}` : ""}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+                    <Badge variant="outline" className="border-white/10 bg-white/5 text-[10px] text-slate-400 h-6">
+                      Not published
+                    </Badge>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => navigate("/admin/sop")}
+                      className="h-8 border-white/10 bg-[#030d12] text-xs font-semibold text-slate-200 hover:bg-white/10 hover:text-white"
+                    >
+                      Open
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => deleteTemplate(t)}
+                      className="h-8 w-8 text-slate-400 hover:bg-rose-500/10 hover:text-rose-400"
+                      aria-label="Discard workflow draft"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

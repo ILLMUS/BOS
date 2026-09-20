@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -52,41 +52,51 @@ export default function AdminAssignments() {
   const [defaults, setDefaults] = useState<StageRoleDefaults>(EMPTY_STAGE_ROLE_DEFAULTS);
   const [savingDefaults, setSavingDefaults] = useState(false);
 
-  useEffect(() => {
-    if (isAdmin && orgId) loadBase();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin, orgId]);
-
-  useEffect(() => {
-    if (templateId) loadStages(templateId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [templateId]);
-
-  if (!isAdmin) return <Navigate to="/dashboard" replace />;
-
-  const loadBase = async () => {
-    const [t, r, d] = await Promise.all([
-      supabase.from("sop_templates").select("id, name, is_active, is_locked, version").eq("org_id", orgId!).order("created_at"),
-      supabase.from("org_roles").select("id, name").eq("org_id", orgId!).order("name"),
-      loadStageRoleDefaults(orgId!).catch(() => EMPTY_STAGE_ROLE_DEFAULTS),
-    ]);
-    const list = (t.data || []) as Template[];
-    setTemplates(list);
-    setRoles((r.data || []) as Role[]);
-    setDefaults(d);
-    setTemplateId((cur) => cur ?? list.find((x) => x.is_active)?.id ?? list[0]?.id ?? null);
-    setLoading(false);
-  };
-
-  const loadStages = async (id: string) => {
+  const loadStages = useCallback(async (id: string) => {
     const { data, error } = await supabase
       .from("sop_stages")
       .select("id, name, position, primary_role_id, secondary_role_id, sla_hours, requires_approval")
       .eq("template_id", id)
       .order("position");
-    if (error) return toast.error("Failed to load workflow steps");
+
+    if (error) {
+      toast.error("Failed to load workflow steps");
+      return;
+    }
     setStages((data || []) as StageRow[]);
-  };
+  }, []);
+
+  const loadBase = useCallback(async () => {
+    if (!orgId) return;
+
+    try {
+      const [t, r, d] = await Promise.all([
+        supabase.from("sop_templates").select("id, name, is_active, is_locked, version").eq("org_id", orgId).order("created_at"),
+        supabase.from("org_roles").select("id, name").eq("org_id", orgId).order("name"),
+        loadStageRoleDefaults(orgId).catch(() => EMPTY_STAGE_ROLE_DEFAULTS),
+      ]);
+
+      const list = (t.data || []) as Template[];
+      setTemplates(list);
+      setRoles((r.data || []) as Role[]);
+      setDefaults(d);
+      setTemplateId((cur) => cur ?? list.find((x) => x.is_active)?.id ?? list[0]?.id ?? null);
+    } catch {
+      toast.error("Failed to load organization data");
+    } finally {
+      setLoading(false);
+    }
+  }, [orgId]);
+
+  useEffect(() => {
+    if (isAdmin && orgId) loadBase();
+  }, [isAdmin, orgId, loadBase]);
+
+  useEffect(() => {
+    if (templateId) loadStages(templateId);
+  }, [templateId, loadStages]);
+
+  if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   const update = (id: string, patch: Partial<StageRow>) =>
     setStages((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
@@ -126,17 +136,18 @@ export default function AdminAssignments() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      for (const s of stages) {
-        const { error } = await supabase
-          .from("sop_stages")
-          .update({
-            primary_role_id: s.primary_role_id,
-            secondary_role_id: s.secondary_role_id,
-            sla_hours: s.sla_hours,
-          })
-          .eq("id", s.id);
-        if (error) throw error;
-      }
+      // Upsert/bulk update stages instead of sequential requests
+      const updates = stages.map((s) => ({
+        id: s.id,
+        template_id: templateId,
+        primary_role_id: s.primary_role_id,
+        secondary_role_id: s.secondary_role_id,
+        sla_hours: s.sla_hours,
+      }));
+
+      const { error } = await supabase.from("sop_stages").upsert(updates, { onConflict: "id" });
+      if (error) throw error;
+
       toast.success("Step responsibilities saved");
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
@@ -279,7 +290,7 @@ export default function AdminAssignments() {
                     type="number"
                     min={1}
                     value={defaults.sla_hours}
-                    onChange={(e) => setDefaults((d) => ({ ...d, sla_hours: Number(e.target.value) || 0 }))}
+                    onChange={(e) => setDefaults((d) => ({ ...d, sla_hours: Math.max(1, Number(e.target.value) || 0) }))}
                   />
                 </div>
               </div>
@@ -372,8 +383,8 @@ export default function AdminAssignments() {
                             min={1}
                             className="w-24"
                             disabled={locked}
-                            value={s.sla_hours ?? 24}
-                            onChange={(e) => update(s.id, { sla_hours: Number(e.target.value) || 0 })}
+                            value={s.sla_hours ?? ""}
+                            onChange={(e) => update(s.id, { sla_hours: Math.max(1, Number(e.target.value) || 0) })}
                           />
                         </td>
                       </tr>

@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Save, Clock } from "lucide-react";
+import { Loader2, Save, Clock, Layers } from "lucide-react";
 import { toast } from "sonner";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface TemplateRow {
   id: string;
@@ -93,72 +94,101 @@ export default function SlaDefaultsEditor() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-10">
-        <Loader2 className="h-6 w-6 animate-spin text-accent" />
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-teal-400" />
       </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <CardTitle className="flex items-center gap-2 font-heading text-lg">
-            <Clock className="h-5 w-5 text-accent" />
-            Step deadlines (SLA)
+    <Card className="relative w-full min-w-0 overflow-hidden border-white/[0.08] bg-[#05131a]/80 text-white shadow-xl backdrop-blur-md">
+      <CardHeader className="border-b border-white/[0.06] p-4 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 min-w-0">
+          <CardTitle className="flex items-center gap-2.5 text-base font-bold tracking-tight text-white sm:text-lg min-w-0">
+            <motion.div
+              whileHover={{ rotate: 15, scale: 1.1 }}
+              transition={{ type: "spring", stiffness: 300, damping: 15 }}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-teal-400/20 bg-teal-500/10 text-teal-400"
+            >
+              <Clock className="h-4 w-4" />
+            </motion.div>
+            <span className="truncate">Step deadlines (SLA)</span>
           </CardTitle>
-          <div className="flex items-center gap-2">
+
+          <div className="flex flex-wrap items-center gap-2 min-w-0">
             {templates.length > 1 && (
               <Select value={templateId ?? undefined} onValueChange={setTemplateId}>
-                <SelectTrigger className="h-9 w-[220px]">
+                <SelectTrigger className="h-8 w-[200px] border-white/10 bg-[#02080b]/80 text-xs text-white focus:ring-teal-400/50">
                   <SelectValue placeholder="Select workflow" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="border-white/10 bg-[#05131a] text-xs text-white">
                   {templates.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
+                    <SelectItem key={t.id} value={t.id} className="focus:bg-white/10 focus:text-white">
                       {t.name} (v{t.version}){t.is_active ? " · active" : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             )}
-            <Button onClick={handleSave} disabled={saving || !dirty || !stages.length} size="sm">
-              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-              Save deadlines
-            </Button>
+
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <Button
+                onClick={handleSave}
+                disabled={saving || !dirty || !stages.length}
+                size="sm"
+                className="h-8 bg-teal-500 text-xs font-semibold text-slate-950 hover:bg-teal-400 disabled:opacity-50"
+              >
+                {saving ? (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Save className="mr-1.5 h-3.5 w-3.5" />
+                )}
+                Save deadlines
+              </Button>
+            </motion.div>
           </div>
         </div>
-        <p className="text-sm text-muted-foreground">
+
+        <p className="break-words text-xs text-slate-400 mt-1">
           Set how long each step of your own workflow may take before it is flagged as overdue. New work picks
           these up automatically.
         </p>
       </CardHeader>
-      <CardContent>
+
+      <CardContent className="p-4 text-xs sm:p-6 sm:text-sm min-w-0">
         {!templates.length ? (
-          <p className="text-sm text-muted-foreground">
+          <div className="rounded-xl border border-white/[0.08] bg-[#02080b]/60 p-6 text-center text-xs text-slate-400">
+            <Layers className="mx-auto h-8 w-8 text-slate-600 mb-2" />
             No workflow yet. Build one in the SOP builder and its steps will appear here.
-          </p>
+          </div>
         ) : !stages.length ? (
-          <p className="text-sm text-muted-foreground">This workflow has no steps yet.</p>
+          <div className="rounded-xl border border-white/[0.08] bg-[#02080b]/60 p-6 text-center text-xs text-slate-400">
+            This workflow has no steps yet.
+          </div>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 min-w-0">
             {stages.map((s, i) => (
-              <div key={s.id} className="flex items-center gap-3 rounded-md border border-border p-3">
+              <div
+                key={s.id}
+                className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-[#02080b]/60 p-3 min-w-0 transition-colors hover:border-white/20"
+              >
                 <div className="min-w-0 flex-1">
-                  <Label className="block truncate text-xs font-medium">
+                  <Label className="block truncate text-xs font-semibold text-slate-200">
                     {i + 1}. {s.name}
                   </Label>
-                  <span className="text-xs text-muted-foreground">{formatHours(s.sla_hours)}</span>
+                  <span className="text-[11px] font-mono text-teal-400">{formatHours(s.sla_hours)}</span>
                 </div>
-                <Input
-                  type="number"
-                  min={1}
-                  max={720}
-                  value={s.sla_hours}
-                  onChange={(e) => handleChange(s.id, Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-20 text-right"
-                />
-                <span className="whitespace-nowrap text-xs text-muted-foreground">hrs</span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={720}
+                    value={s.sla_hours}
+                    onChange={(e) => handleChange(s.id, Math.max(1, parseInt(e.target.value) || 1))}
+                    className="h-8 w-16 border-white/[0.1] bg-[#030d12]/80 font-mono text-xs text-center text-white focus:border-teal-400/50 p-1"
+                  />
+                  <span className="whitespace-nowrap text-[11px] text-slate-400">hrs</span>
+                </div>
               </div>
             ))}
           </div>

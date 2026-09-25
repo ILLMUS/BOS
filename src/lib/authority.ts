@@ -80,20 +80,52 @@ export function canEditSection(level: AuthorityLevel, path: string) {
   return level >= Math.max(required, AUTHORITY.MANAGER as AuthorityLevel);
 }
 
+type StageAccess = {
+  status: string;
+  primary_owner_id: string | null;
+  secondary_owner_id: string | null;
+  escalation_level?: number | null;
+};
+
 /**
- * A work step may only be edited by the person it was handed to, or by
- * managers and the board. Locked and approved steps stay closed to everyone.
+ * Step hierarchy (mirrors public.can_act_on_stage):
+ *   primary owner  -> always
+ *   secondary owner -> edits always; approves only if no primary or once escalated
+ *   managers       -> only when escalated to level 2+ or when nobody is assigned
+ *   board / Owner  -> always
  */
-export function canEditStage(
-  level: AuthorityLevel,
-  stage: { status: string; primary_owner_id: string | null; secondary_owner_id: string | null } | null,
-  userId: string | undefined
-) {
+function canActOnStage(level: AuthorityLevel, stage: StageAccess | null, userId: string | undefined, approve: boolean) {
   if (!stage || !userId) return false;
   if (stage.status === "locked" || stage.status === "approved") return false;
+  const esc = stage.escalation_level ?? 0;
+  if (level >= AUTHORITY.BOARD) return true;
+  if (stage.primary_owner_id === userId) return true;
+  if (stage.secondary_owner_id === userId) return !approve || !stage.primary_owner_id || esc >= 1;
+  if (level >= AUTHORITY.MANAGER && (esc >= 2 || (!stage.primary_owner_id && !stage.secondary_owner_id))) return true;
+  return false;
+}
+
+export function canEditStage(level: AuthorityLevel, stage: StageAccess | null, userId: string | undefined) {
+  return canActOnStage(level, stage, userId, false);
+}
+
+export function canApproveStage(level: AuthorityLevel, stage: StageAccess | null, userId: string | undefined) {
+  return canActOnStage(level, stage, userId, true);
+}
+
+/** Field members only see the details of steps handed to them; managers and above see all. */
+export function canViewStage(level: AuthorityLevel, stage: StageAccess | null, userId: string | undefined) {
+  if (!stage || !userId) return false;
   if (level >= AUTHORITY.MANAGER) return true;
   return stage.primary_owner_id === userId || stage.secondary_owner_id === userId;
 }
+
+export const ESCALATION_LABELS: Record<number, string> = {
+  0: "",
+  1: "Escalated to backup owner",
+  2: "Escalated to managers",
+  3: "Escalated to Owner / Super Admin",
+};
 
 /**
  * Quotation steps are collaborative: any member of the workspace may draft,

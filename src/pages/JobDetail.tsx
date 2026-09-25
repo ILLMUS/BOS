@@ -2,29 +2,21 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { canEditStage, canEditQuoteStage } from "@/lib/authority";
+import {
+  canEditStage,
+  canEditQuoteStage,
+  canApproveStage,
+  canViewStage,
+  ESCALATION_LABELS,
+} from "@/lib/authority";
+import RestrictedNotice from "@/components/RestrictedNotice";
 import { notifyQuoteEvent } from "@/lib/quoteNotifications";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  ArrowLeft,
-  Check,
-  CloudOff,
-  Copy,
-  ExternalLink,
-  FileDown,
-  Loader2,
-  RotateCcw,
-  Save,
-  Shield,
-  Sparkles,
-  Terminal,
-  Zap,
-  X,
-} from "lucide-react";
+import { ArrowLeft, Check, CloudOff, Copy, ExternalLink, FileDown, Loader2, RotateCcw, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import DynamicPipelineBar from "@/components/sop/DynamicPipelineBar";
 import DynamicStageForm from "@/components/sop/DynamicStageForm";
@@ -34,6 +26,7 @@ import { detectFinanceForm } from "@/lib/stageForms";
 import { fetchJobPartyDetails, type JobPartyDetails } from "@/lib/clientDetails";
 import ClientApprovalPanel from "@/components/jobs/ClientApprovalPanel";
 import { needsClientApproval, type ClientDecision } from "@/lib/clientApproval";
+
 
 import SlaTimer from "@/components/sla/SlaTimer";
 import SlaDeadlineEditor from "@/components/sla/SlaDeadlineEditor";
@@ -81,6 +74,7 @@ interface JobStageRow {
   sla_started_at: string | null;
   primary_owner_id: string | null;
   secondary_owner_id: string | null;
+  escalation_level?: number | null;
 }
 
 interface StageMeta {
@@ -170,6 +164,15 @@ export default function JobDetail() {
     return () => { alive = false; };
   }, [job?.id]);
 
+  // Finance records for quotation / invoice / receipt steps are created and kept
+  // up to date by the database itself the moment a step is saved, so every job —
+  // including ones nobody opens — shows matching totals in Finance.
+
+
+
+
+
+
   // Load stage form state + its custom fields
   useEffect(() => {
     if (!current) return;
@@ -238,15 +241,20 @@ export default function JobDetail() {
       );
   }, [current?.primary_owner_id, current?.secondary_owner_id]);
 
-  // Chain of command checks
-  const canApprove = canEditStage(authority, current ?? null, user?.id);
+  // Chain of command: only the assignee of this step, a manager or the board may edit it.
+  // Exception: quotation steps are collaborative — any workspace member may draft,
+  // edit and send the quote, while approval stays with approvers (canApprove).
+  const canApprove = canApproveStage(authority, current ?? null, user?.id);
   const isQuoteStep = financeForm === "quote";
+  const canView = isQuoteStep || canViewStage(authority, current ?? null, user?.id);
   const canEdit =
-    canApprove || (isQuoteStep && canEditQuoteStage(authority, current ?? null, user?.id));
+    canEditStage(authority, current ?? null, user?.id) ||
+    (isQuoteStep && canEditQuoteStage(authority, current ?? null, user?.id));
   const isStepOpen = !!current && current.status !== "locked" && current.status !== "approved";
   const lockedByAuthority = isStepOpen && !canEdit;
 
-  // Client sign-off
+  // Client sign-off: steps named "… approval / sign-off / acceptance" belong to the
+  // client. The team can only advance them once the client approves from their link.
   const [clientDecision, setClientDecision] = useState<ClientDecision | null>(null);
   const isClientApprovalStep = needsClientApproval(current?.stage_name);
   const awaitingClient = isClientApprovalStep && clientDecision?.decision !== "approved";
@@ -275,7 +283,7 @@ export default function JobDetail() {
     setRestoredDraft(null);
   };
 
-  // Local draft keystroke sync
+  // Keep a local copy of every keystroke so nothing is lost if signal drops.
   useEffect(() => {
     if (!current || !dirty || !canEdit) return;
     const t = setTimeout(() => {
@@ -291,7 +299,7 @@ export default function JobDetail() {
     return () => clearTimeout(t);
   }, [current?.id, current?.job_id, formData, notes, dirty, canEdit]);
 
-  // Push offline drafts when reconnected
+  // Push anything captured offline as soon as the connection returns.
   useEffect(() => {
     if (!online) {
       wasOnline.current = false;
@@ -439,67 +447,26 @@ export default function JobDetail() {
   };
 
   if (loading) return <JobDetailSkeleton />;
+
   if (legacy) return <LegacyJobDetail />;
-  if (!job) return <div className="py-20 text-center text-cyan-400/60 font-mono tracking-widest uppercase">Job record untraceable.</div>;
+  if (!job) return <div className="py-20 text-center text-muted-foreground">Job not found.</div>;
 
   const stageIndex = current ? [...stages].sort((a, b) => a.position - b.position).findIndex((s) => s.id === current.id) : 0;
 
   return (
-    <div className="relative space-y-6 overflow-hidden rounded-xl bg-slate-950/90 p-4 sm:p-6 text-slate-100 shadow-[0_0_50px_rgba(6,182,212,0.1)] border border-cyan-500/20 backdrop-blur-xl">
-      {/* Dynamic Futuristic Visual FX Elements */}
-      <style>{`
-        @keyframes scanline {
-          0% { transform: translateY(-100%); }
-          100% { transform: translateY(1000%); }
-        }
-        @keyframes subtle-glow {
-          0%, 100% { opacity: 0.4; filter: drop-shadow(0 0 12px rgba(6, 182, 212, 0.4)); }
-          50% { opacity: 0.8; filter: drop-shadow(0 0 20px rgba(168, 85, 247, 0.6)); }
-        }
-        .animate-scan {
-          animation: scanline 8s linear infinite;
-        }
-        .animate-glow {
-          animation: subtle-glow 4s ease-in-out infinite;
-        }
-      `}</style>
-
-      {/* Cyber Grid Overlay Background */}
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#082f49_1px,transparent_1px),linear-gradient(to_bottom,#082f49_1px,transparent_1px)] bg-[size:2rem_2rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-25" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-cyan-500 to-transparent opacity-50 animate-scan" />
-
-      {/* Header Section */}
-      <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-cyan-500/20 pb-4">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => navigate("/jobs")}
-            className="border-cyan-500/40 bg-slate-900/80 text-cyan-400 hover:border-cyan-400 hover:bg-cyan-500/20 hover:shadow-[0_0_15px_rgba(6,182,212,0.5)] transition-all duration-300"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block h-2 w-2 rounded-full bg-cyan-400 animate-ping" />
-              <h1 className="font-mono text-2xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-purple-400">
-                {job.job_number}
-              </h1>
-              <span className="text-cyan-500/40 font-mono">//</span>
-              <span className="font-semibold text-slate-200 tracking-wide">{job.client_name}</span>
-            </div>
-            <p className="mt-1 font-mono text-xs tracking-widest text-cyan-400/70 uppercase flex items-center gap-2">
-              <Terminal className="h-3 w-3 text-cyan-400" />
-              {job.service_type || "Standard Node"} • {job.client_location || "Global Grid"}
-              {job.template_version ? ` • Workflow Core v${job.template_version}` : ""}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="border-cyan-500/40 bg-cyan-950/40 text-cyan-300 font-mono text-xs px-3 py-1 shadow-[0_0_10px_rgba(6,182,212,0.2)]">
-            <Sparkles className="mr-1 h-3 w-3 text-cyan-400" />
-            CYBER-FLOW ACTIVE
-          </Badge>
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={() => navigate("/jobs")}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <div>
+          <h1 className="font-heading text-2xl font-bold">
+            {job.job_number} — {job.client_name}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {job.service_type || "No service type"} • {job.client_location || "No location"}
+            {job.template_version ? ` • Workflow v${job.template_version}` : ""}
+          </p>
         </div>
       </div>
 
@@ -509,9 +476,7 @@ export default function JobDetail() {
 
       <JobLifecycleTrail jobId={job.id} />
 
-      {/* Dynamic Stage Navigation Bar */}
-      <Card className="relative overflow-hidden border-cyan-500/30 bg-slate-900/60 backdrop-blur-md shadow-[0_0_20px_rgba(6,182,212,0.1)]">
-        <div className="absolute top-0 right-0 h-16 w-16 bg-gradient-to-bl from-cyan-500/20 to-transparent pointer-events-none" />
+      <Card>
         <CardContent className="p-4">
           <DynamicPipelineBar
             stages={stages
@@ -531,65 +496,67 @@ export default function JobDetail() {
 
       {current && (
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Main Stage Execution Panel */}
-          <Card className="lg:col-span-2 relative border-cyan-500/30 bg-slate-900/70 backdrop-blur-lg shadow-[0_0_25px_rgba(0,0,0,0.5)]">
-            <CardHeader className="border-b border-cyan-500/10 bg-slate-950/40">
+          <Card className="lg:col-span-2">
+            <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="font-mono text-lg font-bold text-cyan-300 flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-cyan-400 animate-pulse" />
-                  PHASE 0{stageIndex + 1}: <span className="text-slate-100">{current.stage_name}</span>
+                <CardTitle className="font-heading text-lg">
+                  Step {stageIndex + 1}: {current.stage_name}
                 </CardTitle>
                 <Badge
                   variant="outline"
                   className={
                     current.status === "approved"
-                      ? "border-emerald-500 bg-emerald-950/50 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.3)] font-mono"
+                      ? "border-success text-success"
                       : current.status === "rejected"
-                      ? "border-rose-500 bg-rose-950/50 text-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.3)] font-mono"
+                      ? "border-destructive text-destructive"
                       : current.status === "locked"
-                      ? "border-slate-600 bg-slate-800/50 text-slate-400 font-mono"
-                      : "border-cyan-400 bg-cyan-950/50 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.4)] animate-glow font-mono"
+                      ? "border-locked text-locked-foreground"
+                      : "border-accent text-accent"
                   }
                 >
                   {current.status.toUpperCase()}
                 </Badge>
               </div>
             </CardHeader>
-
-            <CardContent className="space-y-6 pt-6">
+            <CardContent className="space-y-6">
               {(stageMeta?.description ||
                 stageMeta?.primaryRole ||
                 current.primary_owner_id ||
                 stageMeta?.requires_approval) && (
-                <div className="space-y-2 rounded-lg border border-cyan-500/20 bg-cyan-950/20 p-4 shadow-inner">
+                <div className="space-y-2 rounded border border-border bg-muted/40 p-3">
                   {stageMeta?.description && (
-                    <p className="text-sm font-sans text-cyan-200/80">{stageMeta.description}</p>
+                    <p className="text-sm text-muted-foreground">{stageMeta.description}</p>
                   )}
-                  <div className="flex flex-wrap gap-2 text-xs font-mono">
-                    <Badge variant="outline" className="border-cyan-500/40 bg-slate-900 text-cyan-300">
-                      Primary Operator: {stageMeta?.primaryRole || "Unassigned"}
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <Badge variant="outline">
+                      Responsible: {stageMeta?.primaryRole || "Unassigned role"}
                       {current.primary_owner_id && ownerNames[current.primary_owner_id]
-                        ? ` [${ownerNames[current.primary_owner_id]}]`
+                        ? ` · ${ownerNames[current.primary_owner_id]}`
                         : ""}
                     </Badge>
                     {(stageMeta?.secondaryRole || current.secondary_owner_id) && (
-                      <Badge variant="outline" className="border-cyan-500/30 bg-slate-900 text-cyan-400/80">
-                        Auxiliary: {stageMeta?.secondaryRole || "Role"}
+                      <Badge variant="outline">
+                        Backup: {stageMeta?.secondaryRole || "Role"}
                         {current.secondary_owner_id && ownerNames[current.secondary_owner_id]
-                          ? ` [${ownerNames[current.secondary_owner_id]}]`
+                          ? ` · ${ownerNames[current.secondary_owner_id]}`
                           : ""}
                       </Badge>
                     )}
                     {stageMeta?.requires_approval && (
-                      <Badge variant="outline" className="border-purple-500/50 bg-purple-950/30 text-purple-300 shadow-[0_0_8px_rgba(168,85,247,0.3)]">
-                        <Shield className="mr-1 h-3 w-3" /> Authorization Gate
+                      <Badge variant="outline" className="border-accent text-accent">
+                        Approval gate
+                      </Badge>
+                    )}
+                    {(current.escalation_level ?? 0) > 0 && (
+                      <Badge variant="outline" className="border-destructive text-destructive">
+                        {ESCALATION_LABELS[current.escalation_level ?? 0]}
                       </Badge>
                     )}
                   </div>
                 </div>
               )}
 
-              <div className="space-y-2 rounded-lg border border-cyan-500/10 bg-slate-950/40 p-3">
+              <div className="space-y-2">
                 <SlaTimer
                   slaDeadlineHours={current.sla_deadline_hours}
                   slaStartedAt={current.sla_started_at}
@@ -608,102 +575,107 @@ export default function JobDetail() {
                 )}
               </div>
 
-              {/* Dynamic / Built-in Forms Wrapper */}
-              <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-4 shadow-xl">
-                {financeForm === "quote" ? (
-                  <QuotationPrepForm
-                    formData={formData}
-                    onChange={(d) => {
-                      setFormData(d);
-                      setDirty(true);
-                    }}
-                    readOnly={!canEdit}
-                    jobId={job.id}
-                    stageId={current.id}
-                    onQuoteConfirm={setQuoteConfirmed}
-                    pdfOpen={pdfOpen}
-                    onPdfOpenChange={setPdfOpen}
-                  />
-                ) : financeForm ? (
-                  <InvoicingForm
-                    mode={financeForm}
-                    formData={formData}
-                    onChange={(d) => {
-                      setFormData(d);
-                      setDirty(true);
-                    }}
-                    readOnly={!canEdit}
-                    jobId={job.id}
-                    stageId={current.id}
-                  />
-                ) : (
-                  <DynamicStageForm
-                    fields={fields}
-                    formData={formData}
-                    onChange={(d) => {
-                      setFormData(d);
-                      setDirty(true);
-                    }}
-                    readOnly={!canEdit}
-                    jobId={job.id}
-                  />
-                )}
-              </div>
+              {!canView ? (
+                <RestrictedNotice
+                  title="This step is not assigned to you"
+                  message="Only the step's primary and backup owners, managers and the board can see its details. You'll be notified when a step is handed to you."
+                />
+              ) : financeForm === "quote" ? (
+                <QuotationPrepForm
+                  formData={formData}
+                  onChange={(d) => {
+                    setFormData(d);
+                    setDirty(true);
+                  }}
+                  readOnly={!canEdit}
+                  jobId={job.id}
+                  stageId={current.id}
+                  onQuoteConfirm={setQuoteConfirmed}
+                  pdfOpen={pdfOpen}
+                  onPdfOpenChange={setPdfOpen}
+                />
+              ) : financeForm ? (
+                <InvoicingForm
+                  mode={financeForm}
+                  formData={formData}
+                  onChange={(d) => {
+                    setFormData(d);
+                    setDirty(true);
+                  }}
+                  readOnly={!canEdit}
+                  jobId={job.id}
+                  stageId={current.id}
+                />
+              ) : (
+                <DynamicStageForm
+                  fields={fields}
+                  formData={formData}
+                  onChange={(d) => {
+                    setFormData(d);
+                    setDirty(true);
+                  }}
+                  readOnly={!canEdit}
+                  jobId={job.id}
+                />
+              )}
+
 
               {canEdit ? (
-                <div className="space-y-2 border-t border-cyan-500/20 pt-4">
-                  <Label className="font-mono text-xs text-cyan-400 uppercase tracking-wider">Mission Log / Operator Notes</Label>
+                <div className="space-y-2 border-t border-border pt-4">
+                  <Label>Step Notes</Label>
                   <Textarea
                     value={notes}
                     onChange={(e) => {
                       setNotes(e.target.value);
                       setDirty(true);
                     }}
-                    placeholder="Input system observations, operation notes, or diagnostic comments..."
+                    placeholder="Add notes, observations or comments..."
                     rows={3}
-                    className="border-cyan-500/30 bg-slate-950/80 font-mono text-xs text-slate-200 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400"
                   />
                 </div>
               ) : (
                 current.notes && (
-                  <div className="space-y-1 border-t border-cyan-500/20 pt-4">
-                    <Label className="font-mono text-xs text-cyan-400 uppercase">Operator Notes</Label>
-                    <p className="text-sm font-mono text-slate-300 bg-slate-950/60 p-3 rounded border border-slate-800">{current.notes}</p>
+                  <div className="space-y-1 border-t border-border pt-4">
+                    <Label className="text-muted-foreground">Notes</Label>
+                    <p className="text-sm">{current.notes}</p>
                   </div>
                 )
               )}
 
               {lockedByAuthority && (
-                <div className="rounded-lg border border-amber-500/40 bg-amber-950/20 p-3 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.1)]">
-                  <p className="text-sm font-bold font-mono">ACCESS RESTRICTED: READ-ONLY MODE</p>
-                  <p className="text-xs text-amber-200/70">
-                    Operation assigned to designated authority. Only assigned node operators or workspace admins hold write credentials.
+                <div className="rounded border border-warning/40 bg-warning/5 p-3">
+                  <p className="text-sm font-medium">Read-only for you</p>
+                  <p className="text-sm text-muted-foreground">
+                    This step is assigned to someone else. Only its owner, a manager or the
+                    administration board can fill it in.
                   </p>
                 </div>
               )}
 
               {!online && (
-                <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-950/30 p-3 text-amber-300">
-                  <CloudOff className="mt-0.5 h-4 w-4 text-amber-400" />
+                <div className="flex items-start gap-2 rounded border border-warning/40 bg-warning/5 p-3">
+                  <CloudOff className="mt-0.5 h-4 w-4 text-warning" />
                   <div>
-                    <p className="text-sm font-bold font-mono">NETWORK LINK OFFLINE</p>
-                    <p className="text-xs text-amber-200/70">
-                      Local telemetry buffer active. Edits will sync automatically upon grid reconnection.
+                    <p className="text-sm font-medium">You are offline</p>
+                    <p className="text-sm text-muted-foreground">
+                      Keep filling this step in — everything is stored on this device and syncs
+                      automatically once you have signal again.
                     </p>
                   </div>
                 </div>
               )}
 
               {restoredDraft && (
-                <div className="flex items-start gap-2 rounded-lg border border-cyan-500/40 bg-cyan-950/30 p-3 text-cyan-300">
-                  <RotateCcw className="mt-0.5 h-4 w-4 text-cyan-400 animate-spin" />
+                <div className="flex items-start gap-2 rounded border border-accent/40 bg-accent/5 p-3">
+                  <RotateCcw className="mt-0.5 h-4 w-4 text-accent" />
                   <div>
-                    <p className="text-sm font-bold font-mono">OFFLINE DRAFT RECOVERED</p>
-                    <p className="text-xs text-cyan-200/70">
-                      Restored local edits from {formatDraftAge(restoredDraft.savedAt)}.{" "}
+                    <p className="text-sm font-medium">Restored offline draft</p>
+                    <p className="text-sm text-muted-foreground">
+                      Unsent changes from {formatDraftAge(restoredDraft.savedAt)} were loaded back
+                      into this step.{" "}
                       <button
                         type="button"
-                        className="text-cyan-400 underline underline-offset-2 hover:text-cyan-200"
+                        className="underline underline-offset-2"
                         onClick={() => {
                           clearDraft(restoredDraft.stageId);
                           setFormData((current.form_data as Record<string, any>) || {});
@@ -713,7 +685,7 @@ export default function JobDetail() {
                           setDirty(false);
                         }}
                       >
-                        Purge Local Cache
+                        Discard draft
                       </button>
                     </p>
                   </div>
@@ -721,72 +693,56 @@ export default function JobDetail() {
               )}
 
               {current.rejection_reason && (
-                <div className="rounded-lg border border-rose-500/40 bg-rose-950/20 p-3 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.1)]">
-                  <p className="text-sm font-bold font-mono text-rose-400">REJECTION LOG DETECTED:</p>
-                  <p className="text-sm font-mono text-rose-200/90">{current.rejection_reason}</p>
+                <div className="rounded border border-destructive/30 bg-destructive/5 p-3">
+                  <p className="text-sm font-medium text-destructive">Rejection reason:</p>
+                  <p className="text-sm">{current.rejection_reason}</p>
                 </div>
               )}
 
-              {/* Cyber Command Control Dock */}
               {canEdit && (
-                <div className="sticky bottom-2 z-20 mt-4 rounded-xl border border-cyan-500/40 bg-slate-950/90 p-4 shadow-[0_0_30px_rgba(6,182,212,0.25)] backdrop-blur-xl">
-                  <div className="mb-3 flex items-center justify-between text-[10px] font-mono uppercase tracking-[0.2em] text-cyan-400">
-                    <span className="flex items-center gap-2">
-                      <span className="h-2 w-2 animate-ping rounded-full bg-cyan-400" />
-                      Command Module Active
-                    </span>
-                    {dirty && <span className="text-amber-400 animate-pulse">[UNSAVED DATA]</span>}
+                <div className="sticky bottom-2 z-10 mt-2 rounded-lg border border-border/70 bg-background/80 p-3 shadow-[0_0_0_1px_hsl(var(--accent)/0.12)] backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                  <div className="mb-2 flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
+                    Stage controls
                   </div>
                   <div className="flex flex-wrap gap-3">
-                    <Button
-                      onClick={handleSave}
-                      disabled={saving || !dirty}
-                      variant="outline"
-                      className="border-cyan-500/50 bg-slate-900 text-cyan-300 hover:bg-cyan-500/20 hover:border-cyan-400 hover:shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all font-mono"
-                    >
+                    <Button onClick={handleSave} disabled={saving || !dirty} variant="outline">
                       {saving ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : (
                         <Save className="mr-2 h-4 w-4" />
                       )}
-                      {online ? "Commit Changes" : "Save to Buffer"}
+                      {online ? "Save Progress" : "Save on this device"}
                     </Button>
-
                     {queuedOffline && (
-                      <span className="self-center font-mono text-xs text-amber-400 animate-pulse">
-                        Local cache pending sync...
+                      <span className="self-center text-xs text-warning">
+                        Draft waiting to sync
                       </span>
                     )}
-
-                    {financeForm === "quote" && (
-                      <Button
-                        variant="outline"
-                        onClick={() => setPdfOpen(true)}
-                        className="border-purple-500/50 bg-slate-900 text-purple-300 hover:bg-purple-500/20 hover:border-purple-400 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] transition-all font-mono"
-                      >
+                    {(financeForm === "quote") && (
+                      <Button variant="outline" onClick={() => setPdfOpen(true)} className="border-accent/60 text-accent hover:bg-accent/10">
                         <FileDown className="mr-2 h-4 w-4" />
-                        Generate &amp; Transmit PDF
+                        Preview &amp; send PDF
                       </Button>
                     )}
-
                     {canApprove && (
                       <>
                         <Button
                           onClick={handleApprove}
-                          disabled={approving || awaitingClient || (financeForm === "quote" && !quoteConfirmed)}
-                          className="bg-gradient-to-r from-emerald-600 to-teal-500 text-white hover:from-emerald-500 hover:to-teal-400 shadow-[0_0_20px_rgba(16,185,129,0.4)] font-mono font-bold transition-all"
+                          disabled={approving || awaitingClient || ((financeForm === "quote") && !quoteConfirmed)}
+                          className="bg-success text-success-foreground hover:bg-success/90"
                         >
                           {approving ? (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           ) : (
                             <Check className="mr-2 h-4 w-4" />
                           )}
-                          Authorize &amp; Advance
+                          Approve &amp; Advance
                         </Button>
                         <Button
                           variant="outline"
                           onClick={() => setShowReject((v) => !v)}
-                          className="border-rose-500/50 bg-slate-900 text-rose-400 hover:bg-rose-500/20 hover:border-rose-400 hover:shadow-[0_0_15px_rgba(244,63,94,0.4)] transition-all font-mono"
+                          className="border-destructive text-destructive hover:bg-destructive/10"
                         >
                           <X className="mr-2 h-4 w-4" />
                           Reject
@@ -794,126 +750,120 @@ export default function JobDetail() {
                       </>
                     )}
                   </div>
-
                   {isQuoteStep && !canApprove && (
-                    <p className="mt-2 text-xs font-mono text-cyan-400/70">
-                      Draft permissions granted. Final authorization required by stage lead.
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      You can prepare and send this quotation. Final approval stays with the
+                      assigned owner, a manager or the board.
                     </p>
                   )}
                   {awaitingClient && canApprove && (
-                    <p className="mt-2 text-xs font-mono text-amber-400">
-                      Awaiting client authorization token before system advance.
+                    <p className="mt-2 text-xs text-warning">
+                      This step needs the client's own approval first — send them the tracking link
+                      and their client ID from the panel on the right.
                     </p>
                   )}
-                  {financeForm === "quote" && !quoteConfirmed && (
-                    <p className="mt-2 text-xs font-mono text-amber-400">
-                      Quotation confirmation flag required prior to approval.
+                  {(financeForm === "quote") && !quoteConfirmed && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Confirm the quote above before approving this step.
                     </p>
                   )}
                 </div>
               )}
 
+
               {showReject && canApprove && (
-                <div className="space-y-3 rounded-xl border border-rose-500/40 bg-rose-950/30 p-4 shadow-[0_0_20px_rgba(244,63,94,0.2)]">
-                  <Label className="font-mono text-xs text-rose-400 uppercase">Reason for Rejection Protocol *</Label>
+                <div className="space-y-3 rounded border border-destructive/30 p-4">
+                  <Label>Reason for rejection *</Label>
                   <Textarea
                     value={rejectionReason}
                     onChange={(e) => setRejectionReason(e.target.value)}
                     rows={3}
-                    className="border-rose-500/30 bg-slate-950 font-mono text-xs text-slate-100 focus:border-rose-400"
                   />
                   <Button
                     onClick={handleReject}
                     disabled={rejecting || !rejectionReason.trim()}
                     variant="destructive"
-                    className="bg-rose-600 font-mono shadow-[0_0_15px_rgba(244,63,94,0.4)] hover:bg-rose-500"
                   >
                     {rejecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Confirm Rejection Directive
+                    Confirm Rejection
                   </Button>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Right Column: Client Side Panels */}
-          <div className="space-y-6">
-            {isClientApprovalStep && current.status !== "locked" && (
-              <ClientApprovalPanel
-                key={current.id}
-                jobNumber={job.job_number}
-                clientName={job.client_name}
-                clientPhone={job.client_phone}
-                stageId={current.id}
-                stageName={current.stage_name || `Step ${stageIndex + 1}`}
-                trackingToken={job.tracking_token}
-                clientCode={job.client_access_code}
-                onDecision={setClientDecision}
-              />
-            )}
+          {isClientApprovalStep && current.status !== "locked" && (
+            <ClientApprovalPanel
+              key={current.id}
+              jobNumber={job.job_number}
+              clientName={job.client_name}
+              clientPhone={job.client_phone}
+              stageId={current.id}
+              stageName={current.stage_name || `Step ${stageIndex + 1}`}
+              trackingToken={job.tracking_token}
+              clientCode={job.client_access_code}
+              onDecision={setClientDecision}
+            />
+          )}
 
-            <Card className="relative overflow-hidden border-cyan-500/30 bg-slate-900/70 backdrop-blur-lg shadow-[0_0_20px_rgba(0,0,0,0.5)]">
-              <CardHeader className="border-b border-cyan-500/10 bg-slate-950/40">
-                <CardTitle className="font-mono text-lg font-bold text-cyan-300 flex items-center gap-2">
-                  <Terminal className="h-4 w-4 text-cyan-400" />
-                  CLIENT RECORD
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 pt-4 text-sm font-mono">
-                <div className="rounded border border-slate-800 bg-slate-950/50 p-2">
-                  <p className="text-xs text-cyan-500/70 uppercase">Client ID</p>
-                  <p className="font-semibold text-slate-200">{job.client_name}</p>
-                </div>
-                <div className="rounded border border-slate-800 bg-slate-950/50 p-2">
-                  <p className="text-xs text-cyan-500/70 uppercase">Comms Line</p>
-                  <p className="font-semibold text-slate-200">{job.client_phone || "N/A"}</p>
-                </div>
-                <div className="rounded border border-slate-800 bg-slate-950/50 p-2">
-                  <p className="text-xs text-cyan-500/70 uppercase">Digital Address</p>
-                  <p className="font-semibold text-slate-200 truncate">{job.client_email || "N/A"}</p>
-                </div>
-                <div className="rounded border border-slate-800 bg-slate-950/50 p-2">
-                  <p className="text-xs text-cyan-500/70 uppercase">Grid Coordinates</p>
-                  <p className="font-semibold text-slate-200">{job.client_location || "N/A"}</p>
-                </div>
-                <div className="rounded border border-slate-800 bg-slate-950/50 p-2">
-                  <p className="text-xs text-cyan-500/70 uppercase">Service Directive</p>
-                  <p className="font-semibold text-slate-200">{job.service_type || "N/A"}</p>
-                </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-heading text-lg">Client Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div>
+                <p className="text-muted-foreground">Name</p>
+                <p className="font-medium">{job.client_name}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Phone</p>
+                <p className="font-medium">{job.client_phone || "—"}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Email</p>
+                <p className="font-medium">{job.client_email || "—"}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Location</p>
+                <p className="font-medium">{job.client_location || "—"}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Service Type</p>
+                <p className="font-medium">{job.service_type || "—"}</p>
+              </div>
 
-                {job.tracking_token && (
-                  <div className="border-t border-cyan-500/20 pt-3">
-                    <p className="text-xs text-cyan-400 uppercase mb-2">Live Tracking Uplink</p>
-                    <div className="flex flex-col gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-cyan-500/40 bg-slate-950 text-cyan-300 hover:bg-cyan-500/20 hover:border-cyan-400 transition-all text-xs font-mono"
-                        onClick={() => {
-                          navigator.clipboard.writeText(
-                            `${window.location.origin}/track?token=${job.tracking_token}`
-                          );
-                          toast.success("Uplink URI copied to clipboard");
-                        }}
-                      >
-                        <Copy className="mr-2 h-3 w-3 text-cyan-400" /> Copy Tracking Link
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-cyan-400/80 hover:text-cyan-200 hover:bg-cyan-950/40 text-xs font-mono"
-                        onClick={() =>
-                          window.open(`${window.location.origin}/track?token=${job.tracking_token}`, "_blank")
-                        }
-                      >
-                        <ExternalLink className="mr-2 h-3 w-3" /> Preview Uplink
-                      </Button>
-                    </div>
+              {job.tracking_token && (
+                <div className="border-t border-border pt-3">
+                  <p className="text-muted-foreground">Client Tracking Link</p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => {
+                        navigator.clipboard.writeText(
+                          `${window.location.origin}/track?token=${job.tracking_token}`
+                        );
+                        toast.success("Tracking link copied!");
+                      }}
+                    >
+                      <Copy className="mr-1 h-3 w-3" /> Copy Link
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs"
+                      onClick={() =>
+                        window.open(`${window.location.origin}/track?token=${job.tracking_token}`, "_blank")
+                      }
+                    >
+                      <ExternalLink className="mr-1 h-3 w-3" /> Preview
+                    </Button>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>
